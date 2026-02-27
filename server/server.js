@@ -46,7 +46,7 @@ const requireAuth = (req, res, next) => {
   jwt.verify(token, getKey, {
     algorithms: ['RS256'],
     issuer: `https://${AUTH0_DOMAIN}/`,
-    // audience: we aren't strict checking API audiences yet, but Auth0 sends them.
+    audience: process.env.AUTH0_AUDIENCE,
   }, (err, decoded) => {
     if (err) {
       console.error("JWT Verification failed:", err.message);

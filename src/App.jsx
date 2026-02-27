@@ -12,17 +12,18 @@ import { Profile } from './pages/Profile'
 
 // Custom RBAC Guard Route
 function RoleRoute({ children, allowedRole, fallbackPath }) {
-  const { user, isAuthenticated, isLoading } = useAuth0();
+  const { user, isAuthenticated, isLoading, loginWithRedirect } = useAuth0();
 
   if (isLoading) return <div>Loading...</div>;
+
+  if (!isAuthenticated) {
+    loginWithRedirect();
+    return <div>Redirecting to login...</div>;
+  }
 
   const userRoles = user?.['https://larsonserver.ddns.net/roles'] || [];
   
   console.log('User Roles (RoleRoute):', userRoles);
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
 
   // Strictly block waitlisted users from going anywhere but /waitlist
   if (userRoles.includes('waitlist')) {
@@ -39,10 +40,13 @@ function RoleRoute({ children, allowedRole, fallbackPath }) {
 
 // Protected Route Wrapper
 function ProtectedRoute({ children }) {
-  const { user, isAuthenticated, isLoading } = useAuth0();
+  const { user, isAuthenticated, isLoading, loginWithRedirect } = useAuth0();
 
   if (isLoading) return <div>Loading...</div>;
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!isAuthenticated) {
+    loginWithRedirect();
+    return <div>Redirecting to login...</div>;
+  }
   
   const userRoles = user?.['https://larsonserver.ddns.net/roles'] || [];
   console.log('User Roles (ProtectedRoute):', userRoles);
@@ -75,7 +79,9 @@ function App() {
         <Route 
           path="/login" 
           element={
-            isAuthenticated ? <Navigate to="/dashboard" replace /> : <AdminLogin />
+            <ProtectedRoute>
+               <Navigate to="/dashboard" replace />
+            </ProtectedRoute>
           } 
         />
 
