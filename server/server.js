@@ -217,7 +217,7 @@ app.post('/api/users/:id/roles', requireAuth, requireAdmin, async (req, res) => 
   if (!id || !Array.isArray(roles)) return res.status(400).json({ error: 'ID and Roles array required' });
 
   try {
-    const updatedUser = await management.users.update({ id }, {
+    await management.users.update({ id }, {
       app_metadata: { roles: roles }
     });
     console.log(`Successfully updated roles for user ${id} to: ${roles.join(', ')}`);
