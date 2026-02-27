@@ -1,17 +1,15 @@
 import React, { useState } from 'react'
 import { Layout } from '../components/Layout'
 import { BookOpen, Map, MessageSquare, Compass, Rocket, Server } from 'lucide-react'
-import { useUser } from '@clerk/clerk-react'
+import { useAuth0 } from '@auth0/auth0-react'
 
 export function Dashboard() {
   const [activeTab, setActiveTab] = useState('hub');
   
-  const { user } = useUser();
-  const userRoles = user?.publicMetadata?.roles || [];
+  const { user } = useAuth0();
+  const userRoles = user?.['https://larsonserver.ddns.net/roles'] || [];
   
-  // Also checking the legacy 'role' string just in case we didn't migrate users immediately
-  const legacyRole = user?.publicMetadata?.role;
-  const isServerManager = userRoles.includes('server_manager') || userRoles.includes('admin') || legacyRole === 'server_manager' || legacyRole === 'admin';
+  const isServerManager = userRoles.includes('server_manager') || userRoles.includes('admin');
   
   const navItems = [
     { id: 'hub', label: 'Launch Hub', icon: Rocket },

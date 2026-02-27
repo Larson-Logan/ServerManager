@@ -3,9 +3,10 @@ import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Github, Twitter, Mail, ExternalLink, TerminalSquare, Check, X, Send } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { SignedIn, SignedOut } from '@clerk/clerk-react'
+import { useAuth0 } from '@auth0/auth0-react'
 
 export function PublicView() {
+  const { isAuthenticated } = useAuth0();
   const [copied, setCopied] = useState(false);
   
   const handleCopyEmail = async (e) => {
@@ -97,9 +98,9 @@ export function PublicView() {
       {/* Subtle Admin Footer */}
       <footer className="absolute bottom-6 w-full text-center z-10 flex flex-col items-center gap-4">
         {/* Only hide footer entirely if we are already logged in to Dashboard */}
-        <SignedOut>
+        {!isAuthenticated && (
            <p className="text-xs text-zinc-600 font-mono tracking-wider">SECURE_NODE_01</p>
-        </SignedOut>
+        )}
       </footer>
     </div>
   )

@@ -1,7 +1,9 @@
 import React from 'react';
-import { UserButton } from '@clerk/clerk-react';
+import { useAuth0 } from '@auth0/auth0-react';
 
 export function Layout({ children, navItems = [], activeItemId, onNavigate }) {
+  const { logout } = useAuth0();
+
   return (
     <div className="flex h-screen w-full bg-zinc-950 text-white font-sans">
       {/* 
@@ -35,9 +37,14 @@ export function Layout({ children, navItems = [], activeItemId, onNavigate }) {
           </div>
         </nav>
 
-        <div className="mt-auto pt-4 border-t border-zinc-800 text-sm text-zinc-500 flex items-center gap-3">
-          <UserButton />
+        <div className="mt-auto pt-4 border-t border-zinc-800 text-sm text-zinc-500 flex flex-col items-start gap-2">
           <span>Manage Account</span>
+          <button 
+             onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}
+             className="text-red-400 hover:text-red-300 text-xs font-medium"
+          >
+             Sign Out
+          </button>
         </div>
       </aside>
 

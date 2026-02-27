@@ -1,34 +1,24 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { ClerkProvider } from '@clerk/clerk-react'
-import { enUS } from '@clerk/localizations'
+import { Auth0Provider } from '@auth0/auth0-react'
 import './index.css'
 import App from './App.jsx'
 
-const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
+const domain = import.meta.env.VITE_AUTH0_DOMAIN
+const clientId = import.meta.env.VITE_AUTH0_CLIENT_ID
 
-if (!PUBLISHABLE_KEY) {
-  throw new Error("Missing Clerk Publishable Key")
+if (!domain || !clientId) {
+  throw new Error("Missing Auth0 Provider Keys")
 }
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <ClerkProvider 
-      publishableKey={PUBLISHABLE_KEY} 
-      afterSignOutUrl="/"
-      localization={{
-        ...enUS,
-        signIn: {
-          ...enUS.signIn,
-          start: {
-            ...enUS.signIn.start,
-            actionText__join_waitlist: "",
-            actionLink__join_waitlist: "Request Access"
-          }
-        }
-      }}
+    <Auth0Provider
+      domain={domain}
+      clientId={clientId}
+      authorizationParams={{ redirect_uri: window.location.origin }}
     >
       <App />
-    </ClerkProvider>
+    </Auth0Provider>
   </StrictMode>,
 )

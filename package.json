@@ -10,8 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@clerk/clerk-react": "^5.61.2",
-    "@clerk/localizations": "^3.37.1",
+    "@auth0/auth0-react": "^2.15.0",
     "@tailwindcss/vite": "^4.2.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.34.3",

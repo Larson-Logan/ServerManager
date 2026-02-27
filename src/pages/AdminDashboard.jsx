@@ -3,7 +3,7 @@ import { Layout } from '../components/Layout'
 import { StatusCard } from '../components/StatusCard'
 import { Check, X, Clock, Mail, Activity, Users, Server, ExternalLink } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { useAuth } from '@clerk/clerk-react'
+import { useAuth0 } from '@auth0/auth0-react'
 
 // Custom Animated Multi-Select Component
 const CustomRoleSelect = ({ user, currentRoles, isAdmin, onRoleChange }) => {
@@ -101,7 +101,7 @@ const CustomRoleSelect = ({ user, currentRoles, isAdmin, onRoleChange }) => {
 
 export function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('metrics'); // 'metrics' or 'users'
-  const { getToken } = useAuth();
+  const { getAccessTokenSilently: getToken } = useAuth0();
   
   const navItems = [
     { id: 'metrics', label: 'System Metrics', icon: Activity },
