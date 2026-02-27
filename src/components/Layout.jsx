@@ -51,6 +51,12 @@ export function Layout({ children, navItems = [], activeItemId, onNavigate }) {
           </div>
           
           <div className="flex flex-col gap-2">
+            <a 
+               href="/profile"
+               className="w-full text-left px-3 py-2 text-zinc-400 hover:text-white hover:bg-zinc-800/50 rounded-lg text-xs font-semibold transition-colors flex items-center gap-2"
+            >
+               <span>Manage Account</span>
+            </a>
             <button 
                onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}
                className="w-full text-left px-3 py-2 text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-lg text-xs font-semibold transition-colors flex items-center gap-2"

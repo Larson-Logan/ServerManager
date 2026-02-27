@@ -8,6 +8,7 @@ import { AdminLogin } from './pages/AdminLogin'
 import { AdminDashboard } from './pages/AdminDashboard'
 import { Dashboard } from './pages/Dashboard'
 import { Waitlist } from './pages/Waitlist'
+import { Profile } from './pages/Profile'
 
 // Custom RBAC Guard Route
 function RoleRoute({ children, allowedRole, fallbackPath }) {
@@ -97,6 +98,16 @@ function App() {
           element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          } 
+        />
+
+        {/* Profile Page */}
+        <Route 
+          path="/profile" 
+          element={
+            <ProtectedRoute>
+              <Profile />
             </ProtectedRoute>
           } 
         />
