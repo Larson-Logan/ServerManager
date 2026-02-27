@@ -192,17 +192,17 @@ app.get('/api/users', requireAuth, requireAdmin, async (req, res) => {
   try {
     const users = await management.users.getAll();
     // Map Auth0 users to the expected frontend format
-    const mappedUsers = users.data.map(u => ({
-       id: u.user_id,
-       firstName: u.given_name || u.name?.split(' ')[0] || 'Unknown',
-       lastName: u.family_name || u.name?.split(' ')[1] || '',
-       emailAddresses: [{ id: 'primary', emailAddress: u.email }],
-       primaryEmailAddressId: 'primary',
-       imageUrl: u.picture,
-       publicMetadata: {
-          roles: u.app_metadata?.roles || [] 
-       }
-    }));
+     const mappedUsers = users.data.map(u => ({
+        id: u.user_id,
+        firstName: u.given_name || u.user_metadata?.first_name || u.nickname || u.name?.split(' ')[0] || 'Unknown',
+        lastName: u.family_name || u.user_metadata?.last_name || u.name?.split(' ')[1] || '',
+        emailAddresses: [{ id: 'primary', emailAddress: u.email }],
+        primaryEmailAddressId: 'primary',
+        imageUrl: u.picture,
+        publicMetadata: {
+           roles: u.app_metadata?.roles || [] 
+        }
+     }));
     res.json(mappedUsers);
   } catch (error) {
     console.error("Auth0 Get Users Error:", error);
@@ -230,9 +230,63 @@ app.post('/api/users/:id/roles', requireAuth, requireAdmin, async (req, res) => 
 
 // Mocking Requests since Auth0 natively drops everyone into the Database pool immediately via social logins
 app.get('/api/requests', requireAuth, requireAdmin, async (req, res) => {
-   // To simulate a waitlist, we could fetch users who have `app_metadata.roles = ['waitlist']`
-   // But for now, we just return an empty array and use the main `users` table to assign roles.
-   res.json([]); 
+   try {
+     const users = await management.users.getAll();
+     // Find users who have 'waitlist' in their roles metadata
+     const waitlisted = users.data.filter(u => (u.app_metadata?.roles || []).includes('waitlist'));
+     
+     const mappedRequests = waitlisted.map(u => ({
+        id: u.user_id,
+        emailAddress: u.email,
+        createdAt: u.created_at,
+        firstName: u.given_name || u.user_metadata?.first_name || u.nickname || 'Applicant'
+     }));
+     
+     res.json(mappedRequests);
+   } catch (error) {
+     console.error("Waitlist Fetch Error:", error);
+     res.status(500).json({ error: error.message });
+   }
+});
+
+// Approve a waitlist request (moves from waitlist role to user role)
+app.post('/api/approve-request', requireAuth, requireAdmin, async (req, res) => {
+  const { id } = req.body;
+  if (!id) return res.status(400).json({ error: 'User ID required' });
+
+  try {
+    // 1. Fetch current user to get their metadata
+    const user = await management.users.get({ id });
+    let roles = user.data.app_metadata?.roles || [];
+    
+    // 2. Switch waitlist to user
+    roles = roles.filter(r => r !== 'waitlist');
+    if (!roles.includes('user')) roles.push('user');
+
+    await management.users.update({ id }, {
+      app_metadata: { roles: roles }
+    });
+
+    console.log(`Approved waitlist user ${id}. New roles: ${roles.join(', ')}`);
+    res.json({ message: 'User approved successfully' });
+  } catch (error) {
+    console.error("Approval Error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Deny a waitlist request (deletes the user profile)
+app.post('/api/deny-request', requireAuth, requireAdmin, async (req, res) => {
+  const { id } = req.body;
+  if (!id) return res.status(400).json({ error: 'User ID required' });
+
+  try {
+    await management.users.delete({ id });
+    res.json({ message: 'User denied and record deleted' });
+  } catch (error) {
+    console.error("Deny Error:", error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 const PORT = process.env.PORT || 3001;

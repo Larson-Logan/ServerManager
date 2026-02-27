@@ -251,8 +251,7 @@ export function AdminDashboard() {
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold flex items-center gap-2">
-               <Clock size={20} className="text-electric-blue" />
-               Clerk Waitlist Requests
+                Auth0 Waitlist Requests
             </h2>
             <span className="bg-electric-blue/10 text-electric-blue text-xs px-2.5 py-1 rounded-full border border-electric-blue/20 font-medium">
                {requests.length} Pending
@@ -288,7 +287,10 @@ export function AdminDashboard() {
                       <tbody>
                         {requests.map((req) => (
                           <tr key={req.id} className="border-b border-zinc-800/50 hover:bg-white/5 transition-colors">
-                            <td className="px-6 py-4 font-medium text-white">{req.emailAddress}</td>
+                            <td className="px-6 py-4 flex flex-col">
+                               <span className="font-medium text-white">{req.firstName}</span>
+                               <span className="text-[10px] text-zinc-500">{req.emailAddress}</span>
+                            </td>
                             <td className="px-6 py-4 text-zinc-400">
                                {new Date(req.createdAt).toLocaleDateString()} at {new Date(req.createdAt).toLocaleTimeString()}
                             </td>
