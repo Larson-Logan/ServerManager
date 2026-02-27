@@ -72,26 +72,31 @@ export function PublicView() {
           <h1 className="text-3xl font-bold tracking-tight mb-2">Logan Larson</h1>
         </motion.div>
 
-        {/* Links Grid */}
         <div className="w-full space-y-4">
-          {links.map((link, idx) => (
-            <motion.a
-              key={link.name}
-              href={link.url}
-              onClick={link.isAction ? link.onClick : undefined}
-              initial={{ x: -20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ delay: 0.2 + (idx * 0.1), duration: 0.4 }}
-              className="group glass-panel w-full p-4 rounded-2xl flex items-center justify-between transition-all duration-300 hover:scale-[1.02] hover:bg-white/5 border border-zinc-800/50 hover:border-zinc-700 cursor-pointer"
-            >
-              <div className="flex items-center gap-4">
-                 <div className="p-2 rounded-lg bg-zinc-900 border border-zinc-800 transition-colors">
-                    <link.icon size={20} className={`text-zinc-400 transition-colors ${link.color}`} />
-                 </div>
-                 <span className={`font-medium transition-colors ${copied && link.name.includes('Copied') ? 'text-green-400' : 'text-zinc-200 group-hover:text-white'}`}>{link.name}</span>
-              </div>
-            </motion.a>
-          ))}
+          {links.map((link, idx) => {
+            const isInternal = link.url.startsWith('/');
+            const Component = isInternal ? motion(Link) : motion.a;
+            
+            return (
+              <Component
+                key={link.name}
+                to={isInternal ? link.url : undefined}
+                href={!isInternal ? link.url : undefined}
+                onClick={link.isAction ? link.onClick : undefined}
+                initial={{ x: -20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: 0.2 + (idx * 0.1), duration: 0.4 }}
+                className="group glass-panel w-full p-4 rounded-2xl flex items-center justify-between transition-all duration-300 hover:scale-[1.02] hover:bg-white/5 border border-zinc-800/50 hover:border-zinc-700 cursor-pointer"
+              >
+                <div className="flex items-center gap-4">
+                   <div className="p-2 rounded-lg bg-zinc-900 border border-zinc-800 transition-colors">
+                      <link.icon size={20} className={`text-zinc-400 transition-colors ${link.color}`} />
+                   </div>
+                   <span className={`font-medium transition-colors ${copied && link.name.includes('Copied') ? 'text-green-400' : 'text-zinc-200 group-hover:text-white'}`}>{link.name}</span>
+                </div>
+              </Component>
+            );
+          })}
         </div>
       </main>
 

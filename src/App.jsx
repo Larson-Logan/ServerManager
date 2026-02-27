@@ -63,7 +63,12 @@ function App() {
     <BrowserRouter>
       <Routes>
         {/* Public Homepage / Link Hub */}
-        <Route path="/" element={<PublicView />} />
+        <Route 
+          path="/" 
+          element={
+            isAuthenticated ? <Navigate to="/dashboard" replace /> : <PublicView />
+          } 
+        />
 
         {/* Global Login Route */}
         <Route 
