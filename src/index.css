@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+@theme {
+  /* Neon Accents */
+  --color-electric-blue: #00f0ff;
+  --color-cyber-purple: #b026ff;
+
+  /* Glassmorphism Variables */
+  --color-glass-base: rgba(9, 9, 11, 0.4);
+  --color-glass-border: rgba(255, 255, 255, 0.08);
+  --color-glass-border-hover: rgba(255, 255, 255, 0.15);
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-[#09090b] text-zinc-50 antialiased overflow-hidden selection:bg-electric-blue selection:text-black;
+    /* Subtle radial gradient background behind everything */
+    background-image: radial-gradient(
+      circle at 50% -20%,
+      rgba(0, 240, 255, 0.08) 0%,
+      transparent 60%
+    );
+  }
+}
+
+/* Premium Glass utility */
+.glass-panel {
+  @apply bg-glass-base backdrop-blur-xl border border-glass-border shadow-[0_4px_30px_rgba(0,0,0,0.1)];
+}

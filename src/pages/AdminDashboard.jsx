@@ -1,0 +1,388 @@
+import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { Layout } from '../components/Layout'
+import { StatusCard } from '../components/StatusCard'
+import { Check, X, Clock, Mail, Activity, Users, Server, ExternalLink } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { useAuth } from '@clerk/clerk-react'
+
+// Custom Animated Multi-Select Component
+const CustomRoleSelect = ({ user, currentRoles, isAdmin, onRoleChange }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+  
+  // Prevent locking yourself out
+  const isDisabled = isAdmin && user.id === 'user_2taX1gW3wH1zXF8z5D4W7d7z8b8';
+
+  const availableRoles = [
+    { id: 'user', label: 'User', color: 'text-zinc-300', bg: 'bg-zinc-800' },
+    { id: 'server_manager', label: 'Server Mngr', color: 'text-cyber-purple', bg: 'bg-cyber-purple/20' },
+    { id: 'admin', label: 'Admin', color: 'text-electric-blue', bg: 'bg-electric-blue/20' }
+  ];
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
+
+  const toggleRole = (roleId) => {
+     if (isDisabled && roleId === 'admin') return; // Don't let superadmin remove their own admin role
+     let newRoles = [...currentRoles];
+     if (newRoles.includes(roleId)) {
+         newRoles = newRoles.filter(r => r !== roleId);
+     } else {
+         newRoles.push(roleId);
+     }
+     onRoleChange(user.id, newRoles);
+  };
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button 
+        onClick={() => !isDisabled && setIsOpen(!isOpen)}
+        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border flex items-center gap-2 transition-all ${isDisabled ? 'opacity-50 cursor-not-allowed border-zinc-700 bg-zinc-800/50 text-zinc-400' : 'border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-white shadow-sm'}`}
+      >
+        {currentRoles.length === 0 ? (
+          <span className="text-zinc-500">No Roles</span>
+        ) : (
+           <div className="flex gap-1 flex-wrap">
+             {currentRoles.map(r => {
+               const def = availableRoles.find(a => a.id === r);
+               if (!def) return null;
+               return (
+                  <span key={r} className={`px-2 py-0.5 rounded ${def.bg} ${def.color}`}>
+                     {def.label}
+                  </span>
+               )
+             })}
+           </div>
+        )}
+        <svg className={`w-4 h-4 text-zinc-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+      </button>
+
+      {isOpen && (
+        <div className="absolute top-full left-0 mt-2 w-48 bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl z-50 p-2 animate-in fade-in slide-in-from-top-2 duration-200">
+          {availableRoles.map(role => {
+            const hasRole = currentRoles.includes(role.id);
+            return (
+              <label 
+                key={role.id} 
+                onMouseDown={(e) => {
+                  // Prevent the click-away listener from firing before our onClick
+                  e.stopPropagation();
+                }}
+                onClick={(e) => { 
+                  e.preventDefault(); // Prevents double-firing if a nested element triggers it
+                  e.stopPropagation(); // Prevents the click from bubbling
+                  toggleRole(role.id); 
+                }}
+                className="flex items-center gap-3 p-2 hover:bg-zinc-800 rounded-lg cursor-pointer transition-colors group"
+              >
+                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${hasRole ? 'bg-electric-blue border-electric-blue' : 'border-zinc-600 group-hover:border-zinc-500'}`}>
+                  {hasRole && <Check size={12} className="text-zinc-900 stroke-[3]" />}
+                </div>
+                <span className={`text-sm font-medium ${role.color}`}>{role.label}</span>
+              </label>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export function AdminDashboard() {
+  const [activeTab, setActiveTab] = useState('metrics'); // 'metrics' or 'users'
+  const { getToken } = useAuth();
+  
+  const navItems = [
+    { id: 'metrics', label: 'System Metrics', icon: Activity },
+    { id: 'users', label: 'User Management', icon: Users },
+    { id: 'external-amp', label: 'CubeCoders AMP', icon: Server }
+  ];
+
+  const handleNavClick = (id) => {
+    if (id === 'external-amp') {
+      window.open('http://manage.larsonserver.ddns.net', '_blank');
+      return;
+    }
+    setActiveTab(id);
+  };
+
+  const [requests, setRequests] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const token = await getToken();
+      const headers = { Authorization: `Bearer ${token}` };
+
+      const [reqRes, usersRes] = await Promise.all([
+         fetch('/api/requests', { headers }),
+         fetch('/api/users', { headers })
+      ]);
+
+      if (!reqRes.ok || !usersRes.ok) throw new Error('Failed to fetch data (ensure you are an admin)');
+      
+      const reqData = await reqRes.json();
+      const usersData = await usersRes.json();
+      
+      setRequests(reqData);
+      setUsers(usersData);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [getToken]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleDeleteUser = async (userId) => {
+     // TODO: Implement backend route to safely delete provisioned users
+     alert(`User deletion not yet implemented on the backend! Requires a DELETE /api/users/${userId} endpoint.`);
+  };
+
+  const handleRoleChange = async (userId, newRolesArray) => {
+    try {
+      // Optimistically update the UI
+      setUsers(users.map(u => {
+         if (u.id === userId) {
+            return { ...u, publicMetadata: { ...u.publicMetadata, roles: newRolesArray } };
+         }
+         return u;
+      }));
+
+      const token = await getToken();
+      const res = await fetch(`/api/users/${userId}/roles`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ roles: newRolesArray })
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to update roles on backend');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Failed to update roles. Please refresh and try again.');
+      // Ideally we would revert the optimistic update here, simple refresh will do for admin
+      fetchData();
+    }
+  };
+
+  const handleApprove = async (id, email) => {
+    try {
+      const token = await getToken();
+      const res = await fetch('/api/approve-request', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ id, email })
+      });
+      if (res.ok) {
+        setRequests(requests.filter(req => req.id !== id));
+      } else {
+        const err = await res.json();
+        alert(`Error approving: ${err.error}`);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeny = async (id) => {
+    try {
+      const token = await getToken();
+      const res = await fetch('/api/deny-request', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({ id })
+      });
+      if (res.ok) {
+        setRequests(requests.filter(req => req.id !== id));
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+  return (
+    <Layout navItems={navItems} activeItemId={activeTab} onNavigate={handleNavClick}>
+      <div className="mb-6 border-b border-zinc-800 pb-4 flex items-end justify-between">
+        <div className="flex items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+            <p className="text-zinc-500 text-sm mt-1">Overview of system metrics and access controls</p>
+          </div>
+          <Link to="/dashboard" className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-md text-sm font-medium transition-colors ml-4 border border-zinc-700">
+            View User Dashboard
+          </Link>
+        </div>
+      </div>
+
+      {activeTab === 'metrics' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+          <StatusCard title="[Placeholder] CPU Card" />
+          <StatusCard title="[Placeholder] Memory Card" />
+          <StatusCard title="[Placeholder] Storage Gauge" />
+        </div>
+      ) : (
+        <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold flex items-center gap-2">
+               <Clock size={20} className="text-electric-blue" />
+               Clerk Waitlist Requests
+            </h2>
+            <span className="bg-electric-blue/10 text-electric-blue text-xs px-2.5 py-1 rounded-full border border-electric-blue/20 font-medium">
+               {requests.length} Pending
+            </span>
+          </div>
+
+        {loading ? (
+          <div className="text-zinc-500 text-sm animate-pulse">Loading data...</div>
+        ) : error ? (
+          <div className="text-red-400 text-sm bg-red-400/10 p-4 rounded-xl border border-red-400/20">{error}</div>
+        ) : (
+          <div className="space-y-10">
+            {/* Waitlist Table */}
+            <div>
+               <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                 Pending Approvals <span className="bg-electric-blue/20 text-electric-blue px-2 py-0.5 rounded-full text-xs">{requests.length}</span>
+               </h3>
+               {requests.length === 0 ? (
+                 <div className="text-zinc-500 text-sm italic glass-panel p-6 text-center rounded-2xl border border-dashed border-zinc-800 flex flex-col items-center">
+                    <Mail className="opacity-20 mb-2" size={24} />
+                    Waitlist is clear.
+                 </div>
+               ) : (
+                 <div className="glass-panel border border-zinc-800/50 rounded-2xl shadow-xl">
+                    <table className="w-full text-left text-sm text-zinc-400">
+                      <thead className="bg-zinc-900/50 text-zinc-300">
+                        <tr>
+                          <th className="px-6 py-4 font-medium border-b border-zinc-800">Email</th>
+                          <th className="px-6 py-4 font-medium border-b border-zinc-800">Requested On</th>
+                          <th className="px-6 py-4 font-medium border-b border-zinc-800 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {requests.map((req) => (
+                          <tr key={req.id} className="border-b border-zinc-800/50 hover:bg-white/5 transition-colors">
+                            <td className="px-6 py-4 font-medium text-white">{req.emailAddress}</td>
+                            <td className="px-6 py-4 text-zinc-400">
+                               {new Date(req.createdAt).toLocaleDateString()} at {new Date(req.createdAt).toLocaleTimeString()}
+                            </td>
+                            <td className="px-6 py-4 flex justify-end gap-2">
+                               <button 
+                                  onClick={() => handleDeny(req.id)}
+                                  className="p-2 text-zinc-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
+                                  title="Deny Access"
+                               >
+                                  <X size={18} />
+                               </button>
+                               <button 
+                                  onClick={() => handleApprove(req.id, req.emailAddress)}
+                                  className="px-4 py-1.5 flex items-center gap-2 bg-electric-blue/10 text-electric-blue border border-electric-blue/30 hover:bg-electric-blue/20 rounded-lg transition-colors font-medium shadow-[0_0_10px_rgba(0,240,255,0.1)]"
+                                  title="Approve & Send Email Invite"
+                               >
+                                  <Check size={16} /> Approve
+                               </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                 </div>
+               )}
+            </div>
+
+            {/* Existing Users Table */}
+            <div>
+               <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                 Provisioned Accounts <span className="bg-cyber-purple/20 text-cyber-purple px-2 py-0.5 rounded-full text-xs">{users.length}</span>
+               </h3>
+               {users.length === 0 ? (
+                 <div className="text-zinc-500 text-sm italic glass-panel p-6 text-center rounded-2xl border border-dashed border-zinc-800 flex flex-col items-center">
+                    <Users className="opacity-20 mb-2" size={24} />
+                    No registered users yet.
+                 </div>
+               ) : (
+                 <div className="glass-panel border border-zinc-800/50 rounded-2xl shadow-xl">
+                    <table className="w-full text-left text-sm text-zinc-400">
+                      <thead className="bg-zinc-900/50 text-zinc-300">
+                        <tr>
+                          <th className="px-6 py-4 font-medium border-b border-zinc-800">User / Email</th>
+                          <th className="px-6 py-4 font-medium border-b border-zinc-800">Role</th>
+                          <th className="px-6 py-4 font-medium border-b border-zinc-800 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {users.map((u) => {
+                          const primaryEmail = u.emailAddresses.find(e => e.id === u.primaryEmailAddressId)?.emailAddress || 'No Email';
+                          // Support both legacy 'role' string and new 'roles' array during migration
+                          const legacyRole = u.publicMetadata?.role;
+                          const rolesArray = Array.isArray(u.publicMetadata?.roles) ? u.publicMetadata.roles : (legacyRole ? [legacyRole] : ['user']);
+                          const isAdmin = rolesArray.includes('admin') || legacyRole === 'admin';
+                          
+                          return (
+                            <tr key={u.id} className="border-b border-zinc-800/50 hover:bg-white/5 transition-colors">
+                              <td className="px-6 py-4 flex items-center gap-3">
+                                 <img src={u.imageUrl} alt="Avatar" className="w-8 h-8 rounded-full border border-zinc-700" />
+                                 <div>
+                                   <div className="font-medium text-white">{u.firstName} {u.lastName}</div>
+                                   <div className="text-xs text-zinc-500">{primaryEmail}</div>
+                                 </div>
+                              </td>
+                              <td className="px-6 py-4">
+                                 <CustomRoleSelect 
+                                    user={u} 
+                                    currentRoles={rolesArray} 
+                                    isAdmin={isAdmin} 
+                                    onRoleChange={handleRoleChange} 
+                                 />
+                              </td>
+                              <td className="px-6 py-4 flex justify-end">
+                                 <button 
+                                    onClick={() => handleDeleteUser(u.id)}
+                                    className="p-2 text-zinc-500 hover:text-red-400 transition-colors"
+                                    title="Revoke Access"
+                                    disabled={isAdmin} // Don't allow deleting admins from this UI easily
+                                 >
+                                    <X size={18} className={isAdmin ? 'opacity-30' : ''} />
+                                 </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                 </div>
+               )}
+            </div>
+          </div>
+        )}
+        </div>
+      )}
+    </Layout>
+  )
+}
