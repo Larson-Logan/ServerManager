@@ -2,7 +2,7 @@ import React from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 
 export function Layout({ children, navItems = [], activeItemId, onNavigate }) {
-  const { logout } = useAuth0();
+  const { user, logout } = useAuth0();
 
   return (
     <div className="flex h-screen w-full bg-zinc-950 text-white font-sans">
