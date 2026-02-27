@@ -1,10 +1,12 @@
 import React, { useState } from 'react'
 import { Layout } from '../components/Layout'
-import { BookOpen, Map, MessageSquare, Compass, Rocket, Server } from 'lucide-react'
+import { BookOpen, Map, MessageSquare, Compass, Rocket, Server, Shield } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth0 } from '@auth0/auth0-react'
 
 export function Dashboard() {
   const [activeTab, setActiveTab] = useState('hub');
+  const navigate = useNavigate();
   
   const { user } = useAuth0();
   const userRoles = user?.['https://larsonserver.ddns.net/roles'] || [];
@@ -21,9 +23,17 @@ export function Dashboard() {
     navItems.push({ id: 'external-amp', label: 'Manage Server', icon: Server });
   }
 
+  if (userRoles.includes('admin')) {
+    navItems.push({ id: 'admin-panel', label: 'Admin Panel', icon: Shield });
+  }
+
   const handleNavClick = (id) => {
     if (id === 'external-amp') {
       window.open('http://manage.larsonserver.ddns.net', '_blank');
+      return;
+    }
+    if (id === 'admin-panel') {
+      navigate('/admin');
       return;
     }
     setActiveTab(id);
