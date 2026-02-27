@@ -61,23 +61,66 @@ export function Profile() {
                
                <div className="bg-zinc-900/50 p-4 rounded-2xl border border-zinc-800">
                   <div className="flex items-center gap-2 text-zinc-500 text-xs mb-1">
-                    <Key size={12} /> User ID
+                    <Server size={12} /> Account Type
                   </div>
-                  <div className="text-white font-mono text-xs truncate">{user?.sub}</div>
-                  <div className="text-zinc-600 text-[10px] mt-1 italic">Internal Provider ID</div>
+                  <div className="text-white font-medium uppercase tracking-wider text-xs">
+                    {userRoles.includes('admin') ? 'Staff Administrator' : 'Standard User'}
+                  </div>
+                  <div className="text-zinc-600 text-[10px] mt-1 italic">Provider: {user?.sub?.split('|')[0]}</div>
                </div>
             </div>
           </div>
 
-          <div className="glass-panel p-6 rounded-2xl border border-zinc-800/50">
-             <h3 className="text-lg font-semibold mb-4">Security Settings</h3>
-             <p className="text-zinc-500 text-sm mb-6">Passwords and multi-factor authentication are managed through our secure identity provider (Auth0).</p>
-             <button 
-                onClick={() => window.location.href = `https://${import.meta.env.VITE_AUTH0_DOMAIN}/u/reset-password`}
-                className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg text-sm font-medium border border-zinc-700 transition-colors"
-             >
-                Change Workspace Password
-             </button>
+          <div className="glass-panel p-6 rounded-2xl border border-zinc-800/50 bg-cyber-purple/5">
+             <div className="flex items-center justify-between mb-6">
+                <div>
+                   <h3 className="text-lg font-semibold flex items-center gap-2 text-cyber-purple">
+                      <Shield size={20} /> Security & Identity
+                   </h3>
+                   <p className="text-zinc-500 text-xs mt-1">Manage your credentials and authentication methods.</p>
+                </div>
+                <div className="px-3 py-1 rounded-full bg-cyber-purple/10 border border-cyber-purple/20 text-[10px] font-bold text-cyber-purple uppercase tracking-tighter">
+                   Secured by Auth0
+                </div>
+             </div>
+
+             <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 bg-zinc-900/50 rounded-xl border border-zinc-800">
+                   <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400">
+                         <Key size={18} />
+                      </div>
+                      <div>
+                         <p className="text-sm font-semibold">Account Password</p>
+                         <p className="text-[10px] text-zinc-500">Update your account password via email</p>
+                      </div>
+                   </div>
+                   <button 
+                      onClick={() => window.location.href = `https://${import.meta.env.VITE_AUTH0_DOMAIN}/u/reset-password?client_id=${import.meta.env.VITE_AUTH0_CLIENT_ID}`}
+                      className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg text-xs font-medium border border-zinc-700 transition-colors"
+                   >
+                      Reset Password
+                   </button>
+                </div>
+
+                <div className="p-4 bg-zinc-900/50 rounded-xl border border-zinc-800">
+                   <div className="flex items-start gap-4">
+                      <div className="w-10 h-10 rounded-full bg-electric-blue/10 flex items-center justify-center text-electric-blue">
+                         <Shield size={18} />
+                      </div>
+                      <div className="flex-1">
+                         <p className="text-sm font-semibold">Multi-Factor Authentication (MFA)</p>
+                         <p className="text-xs text-zinc-500 mt-1 leading-relaxed">
+                            To enable MFA, please log out and choose the "Security Settings" or "Enable MFA" option during your next login attempt, or contact the cluster admin to force enrollment.
+                         </p>
+                         <div className="mt-3 flex items-center gap-2">
+                             <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+                             <span className="text-[10px] text-zinc-400 uppercase font-bold tracking-widest">Active Protection Available</span>
+                         </div>
+                      </div>
+                   </div>
+                </div>
+             </div>
           </div>
         </div>
 

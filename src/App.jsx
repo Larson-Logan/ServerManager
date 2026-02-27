@@ -4,7 +4,6 @@ import { useAuth0 } from '@auth0/auth0-react'
 
 // Page Components
 import { PublicView } from './pages/PublicView'
-import { AdminLogin } from './pages/AdminLogin'
 import { AdminDashboard } from './pages/AdminDashboard'
 import { Dashboard } from './pages/Dashboard'
 import { Waitlist } from './pages/Waitlist'
