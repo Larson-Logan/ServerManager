@@ -8,6 +8,7 @@ export function Dashboard() {
   
   const { user } = useAuth0();
   const userRoles = user?.['https://larsonserver.ddns.net/roles'] || [];
+  console.log('Dashboard User Roles:', userRoles);
   
   const isServerManager = userRoles.includes('server_manager') || userRoles.includes('admin');
   

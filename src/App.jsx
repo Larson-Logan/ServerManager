@@ -7,6 +7,7 @@ import { PublicView } from './pages/PublicView'
 import { AdminLogin } from './pages/AdminLogin'
 import { AdminDashboard } from './pages/AdminDashboard'
 import { Dashboard } from './pages/Dashboard'
+import { Waitlist } from './pages/Waitlist'
 
 // Custom RBAC Guard Route
 function RoleRoute({ children, allowedRole, fallbackPath }) {
@@ -14,12 +15,17 @@ function RoleRoute({ children, allowedRole, fallbackPath }) {
 
   if (isLoading) return <div>Loading...</div>;
 
-  // Let's assume roles will come via custom claims or app_metadata mapped to user object
-  // For now, if no role claim exists, fallback to standard permission checks based on generic login
   const userRoles = user?.['https://larsonserver.ddns.net/roles'] || [];
+  
+  console.log('User Roles (RoleRoute):', userRoles);
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Strictly block waitlisted users from going anywhere but /waitlist
+  if (userRoles.includes('waitlist')) {
+    return <Navigate to="/waitlist" replace />;
   }
 
   // If they don't have the required role, bounce them
@@ -32,11 +38,19 @@ function RoleRoute({ children, allowedRole, fallbackPath }) {
 
 // Protected Route Wrapper
 function ProtectedRoute({ children }) {
-  const { isAuthenticated, isLoading } = useAuth0();
+  const { user, isAuthenticated, isLoading } = useAuth0();
 
   if (isLoading) return <div>Loading...</div>;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   
+  const userRoles = user?.['https://larsonserver.ddns.net/roles'] || [];
+  console.log('User Roles (ProtectedRoute):', userRoles);
+
+  // Strictly block waitlisted users from the dashboard
+  if (userRoles.includes('waitlist')) {
+    return <Navigate to="/waitlist" replace />;
+  }
+
   return children;
 }
 
@@ -58,6 +72,9 @@ function App() {
             isAuthenticated ? <Navigate to="/dashboard" replace /> : <AdminLogin />
           } 
         />
+
+        {/* Waitlist Page */}
+        <Route path="/waitlist" element={<ProtectedRoute><Waitlist /></ProtectedRoute>} />
 
         {/* Protected Admin Panel (Requires 'admin' role) */}
         <Route 

@@ -37,14 +37,27 @@ export function Layout({ children, navItems = [], activeItemId, onNavigate }) {
           </div>
         </nav>
 
-        <div className="mt-auto pt-4 border-t border-zinc-800 text-sm text-zinc-500 flex flex-col items-start gap-2">
-          <span>Manage Account</span>
-          <button 
-             onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}
-             className="text-red-400 hover:text-red-300 text-xs font-medium"
-          >
-             Sign Out
-          </button>
+        <div className="mt-auto pt-4 border-t border-zinc-800">
+          <div className="flex items-center gap-3 mb-4 p-2 bg-zinc-800/30 rounded-xl border border-zinc-800/50">
+            <img 
+               src={user?.picture} 
+               alt={user?.name} 
+               className="w-10 h-10 rounded-full border border-zinc-700 shadow-sm"
+            />
+            <div className="flex-1 min-w-0">
+               <p className="text-sm font-medium text-white truncate">{user?.name}</p>
+               <p className="text-[10px] text-zinc-500 truncate">{user?.email}</p>
+            </div>
+          </div>
+          
+          <div className="flex flex-col gap-2">
+            <button 
+               onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}
+               className="w-full text-left px-3 py-2 text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-lg text-xs font-semibold transition-colors flex items-center gap-2"
+            >
+               <span>Sign Out</span>
+            </button>
+          </div>
         </div>
       </aside>
 
