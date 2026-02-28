@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import { Layout } from '../components/Layout'
-import { SystemMetrics } from '../components/SystemMetrics'
 import { BookOpen, Map, MessageSquare, Compass, Rocket, Server, Shield } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth0 } from '@auth0/auth0-react'
@@ -11,13 +10,11 @@ export function Dashboard() {
   
   const { getAccessTokenSilently } = useAuth0();
   const [userRoles, setUserRoles] = useState([]);
-  const [accessToken, setAccessToken] = useState(null);
 
   useEffect(() => {
     async function fetchRoles() {
       try {
         const token = await getAccessTokenSilently();
-        setAccessToken(token);
         const res = await fetch('/api/me', { headers: { Authorization: `Bearer ${token}` } });
         if (res.ok) {
           const data = await res.json();
@@ -113,10 +110,6 @@ export function Dashboard() {
             </a>
           </div>
 
-          {/* Live Server Metrics — visible to admins & server managers */}
-          {isServerManager && accessToken && (
-            <SystemMetrics token={accessToken} />
-          )}
         </div>
       ) : (
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">

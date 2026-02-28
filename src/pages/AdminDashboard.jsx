@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Layout } from '../components/Layout'
-import { StatusCard } from '../components/StatusCard'
-import { Check, X, Clock, Mail, Activity, Users, Monitor as MonitorIcon, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react'
+import { SystemMetrics } from '../components/SystemMetrics'
+import { Check, X, Clock, Mail, Activity, Users, Monitor as MonitorIcon, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useAuth0 } from '@auth0/auth0-react'
 
@@ -103,7 +103,12 @@ export function AdminDashboard() {
   useEffect(() => { document.title = 'Admin Panel | LarsonServer'; }, []);
 
   const [activeTab, setActiveTab] = useState('metrics'); // 'metrics' or 'users'
+  const [accessToken, setAccessToken] = useState(null);
   const { getAccessTokenSilently: getToken } = useAuth0();
+
+  useEffect(() => {
+    getToken().then(setAccessToken).catch(console.error);
+  }, [getToken]);
   
   const navItems = [
     { id: 'metrics', label: 'System Metrics', icon: Activity },
@@ -282,10 +287,12 @@ export function AdminDashboard() {
       </div>
 
       {activeTab === 'metrics' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
-          <StatusCard title="[Placeholder] CPU Card" />
-          <StatusCard title="[Placeholder] Memory Card" />
-          <StatusCard title="[Placeholder] Storage Gauge" />
+        <div className="mb-10 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          {accessToken ? (
+            <SystemMetrics token={accessToken} />
+          ) : (
+            <div className="text-zinc-500 text-sm animate-pulse">Loading metrics...</div>
+          )}
         </div>
       ) : (
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
