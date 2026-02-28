@@ -65,7 +65,8 @@ const management = new ManagementClient({
 });
 
 // --- OIDC Discovery Endpoint ---
-app.get('/.well-known/openid-configuration', (req, res) => {
+app.get(['/.well-known/openid-configuration', '/api/oidc/.well-known/openid-configuration'], (req, res) => {
+  console.log(`[OIDC Discovery] Request from ${req.ip}`);
   const baseUrl = `https://larsonserver.ddns.net/api/oidc`;
   res.json({
     issuer: `https://${AUTH0_DOMAIN}/`,
@@ -94,6 +95,7 @@ app.get('/api/oidc/authorize', (req, res) => {
 });
 
 app.post('/api/oidc/token', express.urlencoded({ extended: true }), async (req, res) => {
+  console.log(`[OIDC Token] Request from ${req.ip}, Body:`, req.body);
   try {
     const formData = new URLSearchParams();
     for (const key in req.body) formData.append(key, req.body[key]);
@@ -103,6 +105,7 @@ app.post('/api/oidc/token', express.urlencoded({ extended: true }), async (req, 
       body: formData.toString()
     });
     const data = await tokenResponse.json();
+    console.log(`[OIDC Token] Response status: ${tokenResponse.status}`);
     return res.status(tokenResponse.status).json(data);
   } catch (err) {
     console.error("Token Exchange Error:", err);
@@ -111,14 +114,19 @@ app.post('/api/oidc/token', express.urlencoded({ extended: true }), async (req, 
 });
 
 app.get('/api/oidc/userinfo', async (req, res) => {
+  console.log(`[OIDC UserInfo] Request from ${req.ip}, Auth: ${req.headers.authorization?.substring(0, 15)}...`);
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader) return res.status(401).json({ error: "Missing Authorization header" });
     const auth0Response = await fetch(`https://${AUTH0_DOMAIN}/userinfo`, {
       headers: { 'Authorization': authHeader }
     });
-    if (!auth0Response.ok) return res.status(auth0Response.status).json({ error: "Failed to fetch from Auth0" });
+    if (!auth0Response.ok) {
+      console.log(`[OIDC UserInfo] Auth0 error: ${auth0Response.status}`);
+      return res.status(auth0Response.status).json({ error: "Failed to fetch from Auth0" });
+    }
     const userData = await auth0Response.json();
+    console.log(`[OIDC UserInfo] Data fetched for: ${userData.email}`);
     const customRolesNamespace = 'https://larsonserver.ddns.net/roles';
     const auth0Roles = userData[customRolesNamespace] || [];
     
