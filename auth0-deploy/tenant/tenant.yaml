@@ -1,0 +1,264 @@
+clients:
+  - name: AMP-Server
+    allowed_clients: []
+    allowed_logout_urls:
+      - https://manage.larsonserver.ddns.net/
+    app_type: regular_web
+    callbacks:
+      - https://manage.larsonserver.ddns.net/API/Core/OIDCLogin
+    client_aliases: []
+    cross_origin_authentication: false
+    custom_login_page_on: true
+    grant_types:
+      - authorization_code
+      - implicit
+      - refresh_token
+      - client_credentials
+    is_first_party: true
+    is_token_endpoint_ip_header_trusted: false
+    jwt_configuration:
+      alg: RS256
+      lifetime_in_seconds: 36000
+      secret_encoded: false
+    native_social_login:
+      apple:
+        enabled: false
+      facebook:
+        enabled: false
+    oidc_conformant: true
+    refresh_token:
+      expiration_type: non-expiring
+      leeway: 0
+      infinite_token_lifetime: true
+      infinite_idle_token_lifetime: true
+      token_lifetime: 31557600
+      idle_token_lifetime: 2592000
+      rotation_type: non-rotating
+    sso_disabled: false
+    token_endpoint_auth_method: client_secret_post
+  - name: Default App
+    callbacks: []
+    cross_origin_authentication: false
+    custom_login_page_on: true
+    grant_types:
+      - authorization_code
+      - implicit
+      - refresh_token
+      - client_credentials
+    is_first_party: true
+    is_token_endpoint_ip_header_trusted: false
+    jwt_configuration:
+      alg: RS256
+      lifetime_in_seconds: 36000
+      secret_encoded: false
+    oidc_conformant: true
+    refresh_token:
+      expiration_type: non-expiring
+      leeway: 0
+      infinite_token_lifetime: true
+      infinite_idle_token_lifetime: true
+      token_lifetime: 2592000
+      idle_token_lifetime: 1296000
+      rotation_type: non-rotating
+    sso_disabled: false
+  - name: Deploy CLI
+    app_type: non_interactive
+    cross_origin_authentication: false
+    custom_login_page_on: true
+    grant_types:
+      - client_credentials
+    is_first_party: true
+    is_token_endpoint_ip_header_trusted: false
+    jwt_configuration:
+      alg: RS256
+      lifetime_in_seconds: 36000
+      secret_encoded: false
+    oidc_conformant: true
+    refresh_token:
+      expiration_type: non-expiring
+      leeway: 0
+      infinite_token_lifetime: true
+      infinite_idle_token_lifetime: true
+      token_lifetime: 31557600
+      idle_token_lifetime: 2592000
+      rotation_type: non-rotating
+    sso_disabled: false
+    token_endpoint_auth_method: client_secret_post
+  - name: LarsonServer
+    allowed_clients: []
+    allowed_logout_urls:
+      - https://larsonserver.ddns.net/
+    app_type: spa
+    callbacks:
+      - https://larsonserver.ddns.net/
+    client_aliases: []
+    cross_origin_authentication: false
+    custom_login_page_on: true
+    grant_types:
+      - authorization_code
+      - implicit
+      - refresh_token
+    is_first_party: true
+    is_token_endpoint_ip_header_trusted: false
+    jwt_configuration:
+      alg: RS256
+      lifetime_in_seconds: 36000
+      secret_encoded: false
+    native_social_login:
+      apple:
+        enabled: false
+      facebook:
+        enabled: false
+    oidc_conformant: true
+    refresh_token:
+      expiration_type: expiring
+      leeway: 0
+      token_lifetime: 2592000
+      idle_token_lifetime: 1296000
+      infinite_token_lifetime: false
+      infinite_idle_token_lifetime: false
+      rotation_type: rotating
+    sso_disabled: false
+    token_endpoint_auth_method: none
+    web_origins:
+      - https://larsonserver.ddns.net/
+  - name: LarsonServer-Backend
+    app_type: non_interactive
+    cross_origin_authentication: false
+    custom_login_page_on: true
+    grant_types:
+      - client_credentials
+    is_first_party: true
+    is_token_endpoint_ip_header_trusted: false
+    jwt_configuration:
+      alg: RS256
+      lifetime_in_seconds: 36000
+      secret_encoded: false
+    oidc_conformant: true
+    refresh_token:
+      expiration_type: non-expiring
+      leeway: 0
+      infinite_token_lifetime: true
+      infinite_idle_token_lifetime: true
+      token_lifetime: 31557600
+      idle_token_lifetime: 2592000
+      rotation_type: non-rotating
+    sso_disabled: false
+    token_endpoint_auth_method: client_secret_post
+  - name: Larsonserver (Test Application)
+    app_type: non_interactive
+    cross_origin_authentication: false
+    custom_login_page_on: true
+    grant_types:
+      - client_credentials
+    is_first_party: true
+    is_token_endpoint_ip_header_trusted: false
+    jwt_configuration:
+      alg: RS256
+      lifetime_in_seconds: 36000
+      secret_encoded: false
+    oidc_conformant: true
+    refresh_token:
+      expiration_type: non-expiring
+      leeway: 0
+      infinite_token_lifetime: true
+      infinite_idle_token_lifetime: true
+      token_lifetime: 31557600
+      idle_token_lifetime: 2592000
+      rotation_type: non-rotating
+    sso_disabled: false
+    token_endpoint_auth_method: client_secret_post
+databases:
+  - name: Username-Password-Authentication
+    strategy: auth0
+    authentication:
+      active: true
+    connected_accounts:
+      active: false
+    enabled_clients:
+      - AMP-Server
+      - Default App
+      - Deploy CLI
+      - LarsonServer
+      - Larsonserver (Test Application)
+      - LarsonServer-Backend
+    is_domain_connection: false
+    options: {}
+    realms:
+      - Username-Password-Authentication
+connections:
+  - name: google-oauth2
+    strategy: google-oauth2
+    authentication:
+      active: true
+    connected_accounts:
+      active: false
+    enabled_clients:
+      - AMP-Server
+      - Default App
+      - Deploy CLI
+      - LarsonServer
+      - Larsonserver (Test Application)
+      - LarsonServer-Backend
+    is_domain_connection: false
+roles:
+  - name: admin
+    description: admin
+    permissions: []
+branding:
+  templates: []
+actions:
+  - name: Assign waitlist roles
+    code: ./actions/Assign waitlist roles/code.js
+    dependencies: []
+    deployed: true
+    runtime: node22
+    secrets:
+      - name: AUTH0_DOMAIN
+      - name: AUTH0_CLIENT_ID
+      - name: AUTH0_CLIENT_SECRET
+    status: built
+    supported_triggers:
+      - id: post-login
+        version: v3
+  - name: Force Email Verification
+    code: ./actions/Force Email Verification/code.js
+    dependencies: []
+    deployed: true
+    runtime: node22
+    secrets: []
+    status: built
+    supported_triggers:
+      - id: post-login
+        version: v3
+  - name: Require 2FA for Approved Users
+    code: ./actions/Require 2FA for Approved Users/code.js
+    dependencies: []
+    deployed: true
+    runtime: node22
+    secrets: []
+    status: built
+    supported_triggers:
+      - id: post-login
+        version: v3
+  - name: Sync Roles to Claim
+    code: ./actions/Sync Roles to Claim/code.js
+    dependencies: []
+    deployed: true
+    runtime: node22
+    secrets: []
+    status: built
+    supported_triggers:
+      - id: post-login
+        version: v3
+triggers:
+  post-login:
+    - action_name: Assign waitlist roles
+      display_name: Assign waitlist roles
+    - action_name: Force Email Verification
+      display_name: Force Email Verification
+    - action_name: Sync Roles to Claim
+      display_name: Sync Roles to Claim
+userAttributeProfiles: []
+connectionProfiles: []
+tokenExchangeProfiles: []
