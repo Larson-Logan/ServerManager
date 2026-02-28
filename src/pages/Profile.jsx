@@ -1,6 +1,6 @@
 import React from 'react'
 import { Layout } from '../components/Layout'
-import { User, Shield, Mail, Key, UserCheck, Server } from 'lucide-react'
+import { User, Shield, Mail, Key, UserCheck, Monitor as MonitorIcon } from 'lucide-react'
 import { useAuth0 } from '@auth0/auth0-react'
 
 export function Profile() {
@@ -61,7 +61,7 @@ export function Profile() {
                
                <div className="bg-zinc-900/50 p-4 rounded-2xl border border-zinc-800">
                   <div className="flex items-center gap-2 text-zinc-500 text-xs mb-1">
-                    <Server size={12} /> Account Type
+                    <MonitorIcon size={12} /> Account Type
                   </div>
                   <div className="text-white font-medium uppercase tracking-wider text-xs">
                     {userRoles.includes('admin') ? 'Staff Administrator' : 'Standard User'}

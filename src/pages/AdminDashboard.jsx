@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Layout } from '../components/Layout'
 import { StatusCard } from '../components/StatusCard'
-import { Check, X, Clock, Mail, Activity, Users, Server, ExternalLink } from 'lucide-react'
+import { Check, X, Clock, Mail, Activity, Users, Monitor as MonitorIcon, ExternalLink } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useAuth0 } from '@auth0/auth0-react'
 
@@ -106,7 +106,7 @@ export function AdminDashboard() {
   const navItems = [
     { id: 'metrics', label: 'System Metrics', icon: Activity },
     { id: 'users', label: 'User Management', icon: Users },
-    { id: 'external-amp', label: 'CubeCoders AMP', icon: Server }
+    { id: 'external-amp', label: 'CubeCoders AMP', icon: MonitorIcon }
   ];
 
   const handleNavClick = (id) => {
