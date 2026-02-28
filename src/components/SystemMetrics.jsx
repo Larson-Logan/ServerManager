@@ -35,19 +35,31 @@ function PM2Badge({ status }) {
   );
 }
 
+function formatSeconds(totalSeconds) {
+  const d = Math.floor(totalSeconds / 86400);
+  const h = Math.floor((totalSeconds % 86400) / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  return `${d}d ${h}h ${m}m ${s}s`;
+}
+
 export function SystemMetrics({ token }) {
   const [metrics, setMetrics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
+  // Local uptime ticker — increments every second from the last fetched value
+  const [localUptime, setLocalUptime] = useState(null);
 
   const fetchMetrics = useCallback(async () => {
-    if (!token) return;
+    if (!token || document.hidden) return;
     try {
       const res = await fetch('/api/system', {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
-        setMetrics(await res.json());
+        const data = await res.json();
+        setMetrics(data);
+        setLocalUptime(data.uptime?.seconds ?? null);
         setLastUpdated(new Date());
       }
     } catch (err) {
@@ -57,11 +69,37 @@ export function SystemMetrics({ token }) {
     }
   }, [token]);
 
+  // API poll — 5s when visible, paused when hidden
   useEffect(() => {
     fetchMetrics();
-    const interval = setInterval(fetchMetrics, 15000); // refresh every 15s
-    return () => clearInterval(interval);
+    const interval = setInterval(() => {
+      if (!document.hidden) fetchMetrics();
+    }, 5000);
+
+    const onVisible = () => { if (!document.hidden) fetchMetrics(); };
+    document.addEventListener('visibilitychange', onVisible);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [fetchMetrics]);
+
+  // Local second-ticker — restarts each time localUptime goes from null→number (fresh fetch)
+  const prevUptimeRef = React.useRef(null);
+  useEffect(() => {
+    if (localUptime === null) return;
+    // Only restart the ticker when a genuinely new value comes in from the server
+    if (prevUptimeRef.current !== null && Math.abs(localUptime - prevUptimeRef.current) < 2) {
+      // Still ticking from same fetch, don't restart
+    }
+    prevUptimeRef.current = localUptime;
+    const tick = setInterval(() => {
+      setLocalUptime(s => s + 1);
+    }, 1000);
+    return () => clearInterval(tick);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastUpdated]); // restart the ticker whenever a new fetch completes
 
   if (loading) {
     return (
@@ -182,7 +220,9 @@ export function SystemMetrics({ token }) {
         {/* Uptime */}
         <div className="glass-panel p-5 rounded-2xl border border-glass-border flex flex-col justify-between">
           <h3 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Server Uptime</h3>
-          <div className="text-3xl font-bold text-white tracking-tight">{uptime?.human || '--'}</div>
+          <div className="text-3xl font-bold text-white tracking-tight tabular-nums">
+            {localUptime !== null ? formatSeconds(localUptime) : (uptime?.human || '--')}
+          </div>
           <div className="text-xs text-zinc-600 mt-2">
             Last refreshed: {lastUpdated ? lastUpdated.toLocaleTimeString() : 'never'}
           </div>
