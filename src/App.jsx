@@ -123,13 +123,19 @@ function App() {
     <BrowserRouter>
       <AuthErrorHandler>
         <Routes>
-          {/* Public Homepage / Link Hub */}
-          <Route 
-            path="/" 
-            element={
-              isAuthenticated ? <Navigate to="/dashboard" replace /> : <PublicView />
-            } 
-          />
+        {/* Public Homepage / Link Hub */}
+        <Route 
+          path="/" 
+          element={
+            isAuthenticated ? (
+              <ProtectedRoute>
+                <Navigate to="/dashboard" replace />
+              </ProtectedRoute>
+            ) : (
+              <PublicView />
+            )
+          } 
+        />
 
         {/* Global Login Route */}
         <Route 
