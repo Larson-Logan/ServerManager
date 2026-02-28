@@ -64,6 +64,21 @@ const management = new ManagementClient({
   clientSecret: AUTH0_CLIENT_SECRET,
 });
 
+// --- OIDC Discovery Endpoint ---
+app.get('/.well-known/openid-configuration', (req, res) => {
+  const baseUrl = `https://larsonserver.ddns.net/api/oidc`;
+  res.json({
+    issuer: `https://${AUTH0_DOMAIN}/`,
+    authorization_endpoint: `${baseUrl}/authorize`,
+    token_endpoint: `${baseUrl}/token`,
+    userinfo_endpoint: `${baseUrl}/userinfo`,
+    jwks_uri: `https://${AUTH0_DOMAIN}/.well-known/jwks.json`,
+    response_types_supported: ["code", "id_token", "token id_token"],
+    subject_types_supported: ["public"],
+    id_token_signing_alg_values_supported: ["RS256"]
+  });
+});
+
 app.get('/api/oidc/authorize', (req, res) => {
   try {
     const queryParams = { ...req.query };
@@ -106,12 +121,17 @@ app.get('/api/oidc/userinfo', async (req, res) => {
     const userData = await auth0Response.json();
     const customRolesNamespace = 'https://larsonserver.ddns.net/roles';
     const auth0Roles = userData[customRolesNamespace] || [];
+    
+    // AMP expects "groups" to be an array of strings
     userData.groups = [];
     if (auth0Roles.includes('admin')) {
        userData.groups.push("AMP_SuperAdmin", "AMP_Super Admins");
+    } else if (auth0Roles.includes('user')) {
+       userData.groups.push("Users");
     } else {
        userData.groups.push("Waitlist"); 
     }
+    
     res.json(userData);
   } catch (error) {
     console.error("UserInfo Proxy Error:", error);
