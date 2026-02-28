@@ -131,6 +131,18 @@ function ProtectedRoute({ children, allowWaitlist = false }) {
   return children;
 }
 
+// Simple component for /login: immediately trigger Auth0 or bounce to dashboard
+function LoginRedirect() {
+  const { isAuthenticated, isLoading, loginWithRedirect } = useAuth0();
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      loginWithRedirect();
+    }
+  }, [isLoading, isAuthenticated, loginWithRedirect]);
+  if (isAuthenticated) return <Navigate to="/dashboard" replace />;
+  return <div>Redirecting to login...</div>;
+}
+
 function App() {
   const { isAuthenticated, isLoading } = useAuth0();
 
@@ -154,14 +166,10 @@ function App() {
           } 
         />
 
-        {/* Global Login Route */}
+        {/* Global Login Route - directly triggers Auth0 */}
         <Route 
           path="/login" 
-          element={
-            <ProtectedRoute>
-               <Navigate to="/dashboard" replace />
-            </ProtectedRoute>
-          } 
+          element={<LoginRedirect />}
         />
 
         {/* Waitlist Page */}
