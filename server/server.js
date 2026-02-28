@@ -129,9 +129,12 @@ app.get('/api/oidc/userinfo', async (req, res) => {
     console.log(`[OIDC UserInfo] Data fetched for: ${userData.email}`);
     
     // Ensure nickname or name is mapped to 'username' if AMP requires it
-    if (!userData.username) {
-       userData.username = userData.nickname || userData.name || userData.email.split('@')[0];
-    }
+    // AMP DISALLOWS '@' IN USERNAMES - Sanitizing now.
+    const sanitizedEmailPrefix = userData.email.split('@')[0].replace(/[^a-zA-Z0-9]/g, '');
+    const cleanUsername = (userData.nickname || sanitizedEmailPrefix || 'user').replace(/[^a-zA-Z0-9]/g, '');
+    
+    userData.username = cleanUsername;
+    userData.preferred_username = cleanUsername;
 
     const customRolesNamespace = 'https://larsonserver.ddns.net/roles';
     const auth0Roles = userData[customRolesNamespace] || [];
