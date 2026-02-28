@@ -310,8 +310,8 @@ export function AdminDashboard() {
                     Waitlist is clear.
                  </div>
                ) : (
-                 <div className="glass-panel border border-zinc-800/50 rounded-2xl shadow-xl">
-                    <table className="w-full text-left text-sm text-zinc-400">
+                 <div className="glass-panel border border-zinc-800/50 rounded-2xl shadow-xl overflow-x-auto">
+                    <table className="w-full min-w-[560px] text-left text-sm text-zinc-400">
                       <thead className="bg-zinc-900/50 text-zinc-300">
                         <tr>
                           <th className="px-6 py-4 font-medium border-b border-zinc-800">User / Username</th>
@@ -367,8 +367,8 @@ export function AdminDashboard() {
                     No registered users yet.
                  </div>
                ) : (
-                 <div className="glass-panel border border-zinc-800/50 rounded-2xl shadow-xl">
-                    <table className="w-full text-left text-sm text-zinc-400">
+                 <div className="glass-panel border border-zinc-800/50 rounded-2xl shadow-xl overflow-x-auto">
+                    <table className="w-full min-w-[560px] text-left text-sm text-zinc-400">
                       <thead className="bg-zinc-900/50 text-zinc-300">
                         <tr>
                           <th className="px-6 py-4 font-medium border-b border-zinc-800">User / Email</th>
