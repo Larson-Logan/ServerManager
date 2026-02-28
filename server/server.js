@@ -277,8 +277,8 @@ app.delete('/api/authenticators/:id', requireAuth, async (req, res) => {
   try {
     if (factor_type === 'webauthn' || id.startsWith('webauthn|')) {
       await management.users.deleteAuthenticationMethod({
-        id,
-        user_id: req.user.sub,
+        id: req.user.sub,
+        authentication_method_id: id,
       });
     } else {
       // Default to Guardian for backward compatibility or if explicitly requested
