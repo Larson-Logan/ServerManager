@@ -119,7 +119,7 @@ app.post('/api/amp-launch', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
-app.get('/api/oidc/authorize', async (req, res) => {
+app.get('/api/oidc/authorize', (req, res) => {
   try {
     // Check for the launch cookie
     if (!req.cookies.amp_launch) {
@@ -137,30 +137,8 @@ app.get('/api/oidc/authorize', async (req, res) => {
     const searchParams = new URLSearchParams(queryParams);
     if (!searchParams.has('scope')) searchParams.append('scope', 'openid profile email');
     
-    // To prevent users from manually constructing the Auth0 /authorize URL and bypassing this proxy,
-    // we use Pushed Authorization Requests (PAR). We send the payload server-to-server first.
-    searchParams.append('client_id', AUTH0_CLIENT_ID);
-    searchParams.append('client_secret', AUTH0_CLIENT_SECRET);
-    
-    const parResponse = await fetch(`https://${AUTH0_DOMAIN}/oauth/par`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: searchParams.toString()
-    });
-
-    if (!parResponse.ok) {
-        // If PAR fails or isn't enabled on the tenant, fallback to the traditional redirect
-        console.warn(`[OIDC Proxy] PAR failed (${parResponse.status}), falling back to standard redirect`);
-        searchParams.delete('client_secret'); // Never expose secret in browser
-        const auth0Url = `https://${AUTH0_DOMAIN}/authorize?${searchParams.toString()}`;
-        return res.redirect(auth0Url);
-    }
-
-    const parData = await parResponse.json();
-    
-    // Redirect the user using the secure request_uri returned by Auth0 PAR
-    const secureAuth0Url = `https://${AUTH0_DOMAIN}/authorize?client_id=${AUTH0_CLIENT_ID}&request_uri=${parData.request_uri}`;
-    res.redirect(secureAuth0Url);
+    const auth0Url = `https://${AUTH0_DOMAIN}/authorize?${searchParams.toString()}`;
+    res.redirect(auth0Url);
   } catch (error) {
     console.error("OIDC Proxy Error:", error);
     res.status(500).send("Internal Server Error processing OIDC redirect.");
