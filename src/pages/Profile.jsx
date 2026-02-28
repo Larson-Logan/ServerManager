@@ -12,7 +12,7 @@ function buildAuth0Redirect(acrValues) {
   const params = new URLSearchParams({
     response_type: 'code',
     client_id: AUTH0_CLIENT_ID,
-    redirect_uri: window.location.origin + '/dashboard',
+    redirect_uri: window.location.origin, // must match registered Auth0 callback URL
     scope: 'openid profile email',
     acr_values: acrValues,
     prompt: 'login',
@@ -21,7 +21,7 @@ function buildAuth0Redirect(acrValues) {
 }
 
 export function Profile() {
-  const { user, getAccessTokenSilently, logout } = useAuth0();
+  const { user, getAccessTokenSilently } = useAuth0();
   const navigate = useNavigate();
   const [userRoles, setUserRoles] = useState([]);
   const [rolesLoading, setRolesLoading] = useState(true);
