@@ -220,6 +220,7 @@ export function AdminDashboard() {
       });
       if (res.ok) {
         setRequests(requests.filter(req => req.id !== id));
+        fetchData(); // Immediately refresh the Provisioned Accounts list
       } else {
         const err = await res.json();
         alert(`Error approving: ${err.error}`);
