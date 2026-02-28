@@ -12,21 +12,28 @@ import { Profile } from './pages/Profile'
 // Error Handler Component
 function AuthErrorHandler({ children }) {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [errorMsg, setErrorMsg] = useState('');
+  
+  // Read initial error directly from params (no effect needed)
+  const initialError = searchParams.get('error');
+  const initialErrorDesc = searchParams.get('error_description');
+  
+  const [errorMsg, setErrorMsg] = useState(() => {
+    if (initialError === 'access_denied' && initialErrorDesc) {
+      return decodeURIComponent(initialErrorDesc);
+    }
+    return '';
+  });
 
+  // Clean URL strictly once if there was an error
   useEffect(() => {
-    const error = searchParams.get('error');
-    const errorDescription = searchParams.get('error_description');
-    
-    if (error === 'access_denied' && errorDescription) {
-      setErrorMsg(decodeURIComponent(errorDescription));
-      // Clean up the URL
+    if (initialError === 'access_denied') {
       searchParams.delete('error');
       searchParams.delete('error_description');
       searchParams.delete('state');
       setSearchParams(searchParams, { replace: true });
     }
-  }, [searchParams, setSearchParams]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <>
