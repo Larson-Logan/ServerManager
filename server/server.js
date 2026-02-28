@@ -5,6 +5,7 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 console.log(`>>> AUTH0 PROXY VERSION 2.3 STARTING - Domain: ${process.env.AUTH0_DOMAIN || 'UNDEFINED'} <<<`);
 const express = require('express');
+const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
@@ -14,6 +15,7 @@ const { ManagementClient } = require('auth0');
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(cookieParser());
 
 const AUTH0_DOMAIN = process.env.AUTH0_DOMAIN;
 const AUTH0_CLIENT_ID = process.env.AUTH0_CLIENT_ID;
@@ -105,8 +107,31 @@ app.get(['/.well-known/openid-configuration', '/api/oidc/.well-known/openid-conf
   });
 });
 
+// --- /api/amp-launch: Generate a short-lived token to unlock AMP login ---
+app.post('/api/amp-launch', requireAuth, (req, res) => {
+  // Give them a 2-minute window (120000ms) to complete the login
+  res.cookie('amp_launch', 'valid', { 
+    maxAge: 120000, 
+    httpOnly: true, 
+    sameSite: 'lax',
+    secure: true // Because we are using HTTPS
+  });
+  res.json({ success: true });
+});
+
 app.get('/api/oidc/authorize', (req, res) => {
   try {
+    // Check for the launch cookie
+    if (!req.cookies.amp_launch) {
+      return res.status(403).send(`
+        <div style="font-family: sans-serif; text-align: center; margin-top: 100px; color: #fff; background: #09090b; height: 100vh; padding: 20px;">
+          <h2 style="color: #ef4444;">Access Denied</h2>
+          <p style="color: #a1a1aa; margin-top: 10px;">Direct AMP login is disabled for security reasons.</p>
+          <p style="color: #a1a1aa;">Please launch the Server Manager from your <a href="https://larsonserver.ddns.net/dashboard" style="color: #00f0ff;">Dashboard</a>.</p>
+        </div>
+      `);
+    }
+
     const queryParams = { ...req.query };
     if (!queryParams.state) queryParams.state = crypto.randomBytes(8).toString('hex');
     const searchParams = new URLSearchParams(queryParams);

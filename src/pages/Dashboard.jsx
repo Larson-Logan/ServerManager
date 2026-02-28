@@ -48,15 +48,30 @@ export function Dashboard() {
     navItems.push({ id: 'admin-panel', label: 'Admin Panel', icon: Shield });
   }
 
-  const handleNavClick = (id) => {
+  const handleNavClick = async (id) => {
     if (id === 'external-amp') {
-      window.open('http://manage.larsonserver.ddns.net', '_blank');
+      try {
+        const token = await getAccessTokenSilently();
+        const res = await fetch('/api/amp-launch', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          window.open('https://manage.larsonserver.ddns.net', '_blank');
+        } else {
+          console.error('Failed to get launch token from server');
+          alert('Could not launch server manager. Please check your permissions.');
+        }
+      } catch (err) {
+        console.error('Launch request failed:', err);
+      }
       return;
     }
     if (id === 'admin-panel') {
       navigate('/admin');
       return;
     }
+
     setActiveTab(id);
   };
 
