@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+
+# Block access to API routes
+Disallow: /api/
+
+Sitemap: https://larsonserver.ddns.net/sitemap.xml
