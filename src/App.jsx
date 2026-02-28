@@ -100,14 +100,15 @@ function ProtectedRoute({ children, allowWaitlist = false }) {
   }
   
   const userRoles = user?.['https://larsonserver.ddns.net/roles'] || [];
+  const isWaitlist = userRoles.includes('waitlist') || userRoles.length === 0;
   
-  // Strictly block waitlisted users from the dashboard, UNLESS they are specifically allowed (like on the waitlist page itself)
-  if (userRoles.includes('waitlist') && !allowWaitlist) {
+  // Strictly block waitlisted users (and users with NO roles) from the dashboard
+  if (isWaitlist && !allowWaitlist) {
     return <Navigate to="/waitlist" replace />;
   }
 
   // If we are on the waitlist page but the user is already approved, send them to the dashboard
-  if (allowWaitlist && !userRoles.includes('waitlist')) {
+  if (allowWaitlist && !isWaitlist) {
      return <Navigate to="/dashboard" replace />;
   }
 
