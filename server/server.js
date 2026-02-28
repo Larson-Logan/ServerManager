@@ -230,31 +230,43 @@ app.post('/api/mfa-enrollment', requireAuth, async (req, res) => {
 // ── MFA Authenticator Management ──────────────────────────────────────────────
 // List all security factors (Guardian MFA + WebAuthn/Passkeys)
 app.get('/api/authenticators', requireAuth, async (req, res) => {
+  const combined = [];
+  
+  // 1. Try Guardian Enrollments (TOTP, SMS, Push)
   try {
-    const [guardianRes, webauthnRes] = await Promise.all([
-      management.users.getEnrollments({ id: req.user.sub }),
-      management.users.getAuthenticationMethods({ id: req.user.sub }),
-    ]);
+    const guardianRes = await management.users.getEnrollments({ id: req.user.sub });
+    if (guardianRes.data) {
+      combined.push(...guardianRes.data.map(e => ({ ...e, factor_type: 'guardian' })));
+    }
+  } catch (err) {
+    console.warn('[authenticators] Guardian fetch failed:', err.message);
+    // Continue anyway
+  }
 
-    // Combine them, marking the source so the frontend/delete logic knows which is which
-    const combined = [
-      ...(guardianRes.data || []).map(e => ({ ...e, factor_type: 'guardian' })),
-      ...(webauthnRes.data || []).map(m => ({
+  // 2. Try WebAuthn / Authentication Methods (Passkeys)
+  try {
+    const webauthnRes = await management.users.getAuthenticationMethods({ id: req.user.sub });
+    if (webauthnRes.data) {
+      combined.push(...webauthnRes.data.map(m => ({
         id: m.id,
         auth_method: m.type,
         friendly_name: m.name,
-        confirmed: true, // WebAuthn methods are confirmed if they exist
+        confirmed: true,
         enrolled_at: m.created_at,
         factor_type: 'webauthn',
         ...m
-      })),
-    ];
-
-    res.json(combined);
+      })));
+    }
   } catch (err) {
-    console.error('[authenticators] Error:', err.message);
-    res.status(500).json({ error: err.message });
+    console.warn('[authenticators] WebAuthn fetch failed:', err.message);
+    // If BOTH fail, and WebAuthn was the one that hit "Insufficient scope", 
+    // we want the user to know why.
+    if (combined.length === 0) {
+      return res.status(500).json({ error: `Auth0 Scope Missing: ${err.message}` });
+    }
   }
+
+  res.json(combined);
 });
 
 // Delete a specific factor (handles both Guardian and WebAuthn)
