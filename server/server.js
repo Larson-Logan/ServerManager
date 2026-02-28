@@ -231,7 +231,7 @@ app.post('/api/mfa-enrollment', requireAuth, async (req, res) => {
 // List Guardian MFA enrollments for the current user
 app.get('/api/authenticators', requireAuth, async (req, res) => {
   try {
-    const result = await management.guardian.getUserEnrollments({ id: req.user.sub });
+    const result = await management.guardian.getEnrollments({ id: req.user.sub });
     res.json(result.data);
   } catch (err) {
     console.error('[authenticators] Error:', err.message);
@@ -242,7 +242,7 @@ app.get('/api/authenticators', requireAuth, async (req, res) => {
 // Delete a specific Guardian enrollment by ID
 app.delete('/api/authenticators/:enrollmentId', requireAuth, async (req, res) => {
   try {
-    await management.guardian.deleteUserEnrollment({
+    await management.guardian.deleteEnrollment({
       id: req.params.enrollmentId,
     });
     res.json({ message: 'Authenticator removed.' });
