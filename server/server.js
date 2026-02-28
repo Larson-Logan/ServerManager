@@ -1,14 +1,15 @@
 /* eslint-env node */
 /* eslint-disable no-undef */
 // server.js
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
+console.log(`>>> AUTH0 PROXY VERSION 2.3 STARTING - Domain: ${process.env.AUTH0_DOMAIN || 'UNDEFINED'} <<<`);
 const express = require('express');
-console.log(">>> AUTH0 PROXY VERSION 2.2 STARTING <<<");
 const cors = require('cors');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const jwksClient = require('jwks-rsa');
 const { ManagementClient } = require('auth0');
-require('dotenv').config();
 
 const app = express();
 app.use(cors());
@@ -18,12 +19,15 @@ const AUTH0_DOMAIN = process.env.AUTH0_DOMAIN;
 const AUTH0_CLIENT_ID = process.env.AUTH0_CLIENT_ID;
 const AUTH0_CLIENT_SECRET = process.env.AUTH0_CLIENT_SECRET;
 
-const client = jwksClient({
-  jwksUri: `https://${AUTH0_DOMAIN}/.well-known/jwks.json`
-});
+// Lazy JWKS client - created after env vars are confirmed loaded
+function getJwksClient() {
+  return jwksClient({
+    jwksUri: `https://${AUTH0_DOMAIN}/.well-known/jwks.json`
+  });
+}
 
 function getKey(header, callback) {
-  client.getSigningKey(header.kid, function(err, key) {
+  getJwksClient().getSigningKey(header.kid, function(err, key) {
     if (err) return callback(err);
     const signingKey = key.publicKey || key.rsaPublicKey;
     callback(null, signingKey);
