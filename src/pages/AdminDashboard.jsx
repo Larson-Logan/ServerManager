@@ -270,13 +270,25 @@ export function AdminDashboard() {
         </div>
       ) : (
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold flex items-center gap-2">
-                Auth0 Waitlist Requests
-            </h2>
-            <span className="bg-electric-blue/10 text-electric-blue text-xs px-2.5 py-1 rounded-full border border-electric-blue/20 font-medium">
-               {requests.length} Pending
-            </span>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div className="flex items-center gap-4">
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                  Auth0 Waitlist Requests
+              </h2>
+              <span className="bg-electric-blue/10 text-electric-blue text-xs px-2.5 py-1 rounded-full border border-electric-blue/20 font-medium">
+                 {requests.length} Pending
+              </span>
+            </div>
+            <button 
+              onClick={fetchData}
+              disabled={loading}
+              className="flex items-center gap-2 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors border border-zinc-700"
+            >
+              <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              {loading ? 'Refreshing...' : 'Refresh Data'}
+            </button>
           </div>
 
         {loading ? (
