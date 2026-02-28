@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Layout } from '../components/Layout'
 import { StatusCard } from '../components/StatusCard'
-import { Check, X, Clock, Mail, Activity, Users, Monitor as MonitorIcon, ExternalLink } from 'lucide-react'
+import { Check, X, Clock, Mail, Activity, Users, Monitor as MonitorIcon, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useAuth0 } from '@auth0/auth0-react'
 
@@ -136,6 +136,8 @@ export function AdminDashboard() {
 
   const [requests, setRequests] = useState([]);
   const [users, setUsers] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -382,7 +384,7 @@ export function AdminDashboard() {
                     No registered users yet.
                  </div>
                ) : (
-                 <div className="glass-panel border border-glass-border rounded-2xl shadow-xl overflow-x-auto">
+                 <div className="glass-panel border border-glass-border rounded-2xl shadow-xl overflow-x-auto flex flex-col">
                     <table className="w-full min-w-[560px] text-left text-sm text-zinc-400">
                       <thead className="bg-zinc-900/50 text-zinc-300">
                         <tr>
@@ -392,7 +394,7 @@ export function AdminDashboard() {
                         </tr>
                       </thead>
                       <tbody>
-                        {users.map((u) => {
+                        {users.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((u) => {
                           const primaryEmail = u.emailAddresses.find(e => e.id === u.primaryEmailAddressId)?.emailAddress || 'No Email';
                           // Support both legacy 'role' string and new 'roles' array during migration
                           const legacyRole = u.publicMetadata?.role;
@@ -434,6 +436,36 @@ export function AdminDashboard() {
                         })}
                       </tbody>
                     </table>
+
+                    {/* Pagination Controls */}
+                    {users.length > pageSize && (
+                      <div className="px-6 py-4 border-t border-zinc-800/50 bg-zinc-900/10 flex items-center justify-between">
+                        <div className="text-xs text-zinc-500">
+                          Showing <span className="text-zinc-300">{(currentPage - 1) * pageSize + 1}</span> to <span className="text-zinc-300">{Math.min(currentPage * pageSize, users.length)}</span> of <span className="text-zinc-300">{users.length}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                            disabled={currentPage === 1}
+                            className="p-1.5 rounded-lg border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 disabled:opacity-30 transition-all text-zinc-400 hover:text-white"
+                          >
+                            <ChevronLeft size={16} />
+                          </button>
+                          
+                          <div className="text-xs font-medium text-zinc-300 px-2 min-w-[50px] text-center">
+                            Page {currentPage} of {Math.ceil(users.length / pageSize)}
+                          </div>
+
+                          <button
+                            onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(users.length / pageSize)))}
+                            disabled={currentPage >= Math.ceil(users.length / pageSize)}
+                            className="p-1.5 rounded-lg border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 disabled:opacity-30 transition-all text-zinc-400 hover:text-white"
+                          >
+                            <ChevronRight size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
                  </div>
                )}
             </div>
