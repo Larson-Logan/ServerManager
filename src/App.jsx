@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useSearchParams } from 'react-router-dom'
 import { useAuth0 } from '@auth0/auth0-react'
 
@@ -61,56 +61,72 @@ function AuthErrorHandler({ children }) {
   );
 }
 
+// Hook to fetch LIVE roles from our backend (bypasses stale JWT cache)
+function useLiveRoles() {
+  const { isAuthenticated, isLoading, getAccessTokenSilently } = useAuth0();
+  const [roles, setRoles] = useState(null); // null = still loading
+  const [rolesError, setRolesError] = useState(false);
+
+  const fetchRoles = useCallback(async () => {
+    if (!isAuthenticated) return;
+    try {
+      const token = await getAccessTokenSilently();
+      const res = await fetch('/api/me', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Failed to fetch roles');
+      const data = await res.json();
+      console.log('[useLiveRoles] Live roles from server:', data.roles);
+      setRoles(data.roles);
+    } catch (err) {
+      console.error('[useLiveRoles] Error:', err);
+      setRolesError(true);
+      setRoles([]); // fail-safe: treat as no roles (waitlisted)
+    }
+  }, [isAuthenticated, getAccessTokenSilently]);
+
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      fetchRoles();
+    }
+  }, [isLoading, isAuthenticated, fetchRoles]);
+
+  return { roles, rolesError };
+}
+
 // Custom RBAC Guard Route
 function RoleRoute({ children, allowedRole, fallbackPath }) {
-  const { user, isAuthenticated, isLoading, loginWithRedirect } = useAuth0();
+  const { isAuthenticated, isLoading, loginWithRedirect } = useAuth0();
+  const { roles } = useLiveRoles();
 
-  if (isLoading) return <div>Loading...</div>;
+  if (isLoading || roles === null) return <div>Loading...</div>;
 
   if (!isAuthenticated) {
     loginWithRedirect();
     return <div>Redirecting to login...</div>;
   }
 
-  const userRoles = user?.['https://larsonserver.ddns.net/roles'] || [];
-  
-  console.log('User Roles (RoleRoute):', userRoles);
-
-  // Strictly block waitlisted users from going anywhere but /waitlist
-  if (userRoles.includes('waitlist')) {
-    return <Navigate to="/waitlist" replace />;
-  }
-
-  // If they don't have the required role, bounce them
-  if (!userRoles.includes(allowedRole)) {
-    return <Navigate to={fallbackPath} replace />;
-  }
+  if (roles.includes('waitlist')) return <Navigate to="/waitlist" replace />;
+  if (!roles.includes(allowedRole)) return <Navigate to={fallbackPath} replace />;
 
   return children;
 }
 
 // Protected Route Wrapper
 function ProtectedRoute({ children, allowWaitlist = false }) {
-  const { user, isAuthenticated, isLoading, loginWithRedirect } = useAuth0();
+  const { isAuthenticated, isLoading, loginWithRedirect } = useAuth0();
+  const { roles } = useLiveRoles();
 
-  if (isLoading) return <div>Loading...</div>;
+  if (isLoading || roles === null) return <div>Loading...</div>;
   if (!isAuthenticated) {
     loginWithRedirect();
     return <div>Redirecting to login...</div>;
   }
-  
-  const userRoles = user?.['https://larsonserver.ddns.net/roles'] || [];
-  const isWaitlist = userRoles.includes('waitlist') || userRoles.length === 0;
-  
-  // Strictly block waitlisted users (and users with NO roles) from the dashboard
-  if (isWaitlist && !allowWaitlist) {
-    return <Navigate to="/waitlist" replace />;
-  }
 
-  // If we are on the waitlist page but the user is already approved, send them to the dashboard
-  if (allowWaitlist && !isWaitlist) {
-     return <Navigate to="/dashboard" replace />;
-  }
+  const isWaitlist = roles.includes('waitlist') || roles.length === 0;
+
+  if (isWaitlist && !allowWaitlist) return <Navigate to="/waitlist" replace />;
+  if (allowWaitlist && !isWaitlist) return <Navigate to="/dashboard" replace />;
 
   return children;
 }

@@ -69,6 +69,19 @@ const management = new ManagementClient({
   clientSecret: AUTH0_CLIENT_SECRET,
 });
 
+// --- /api/me: returns LIVE roles from Auth0 (bypasses JWT claim cache) ---
+app.get('/api/me', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.sub;
+    const user = await management.users.get({ id: userId });
+    const roles = user.data.app_metadata?.roles || [];
+    res.json({ roles });
+  } catch (error) {
+    console.error('[/api/me] Error fetching live roles:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // --- OIDC Discovery Endpoint ---
 app.get(['/.well-known/openid-configuration', '/api/oidc/.well-known/openid-configuration'], (req, res) => {
   console.log(`[OIDC Discovery] Request from ${req.ip}`);
