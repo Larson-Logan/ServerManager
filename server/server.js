@@ -227,6 +227,32 @@ app.post('/api/mfa-enrollment', requireAuth, async (req, res) => {
   }
 });
 
+// ── MFA Authenticator Management ──────────────────────────────────────────────
+// List enrolled authenticators for the current user
+app.get('/api/authenticators', requireAuth, async (req, res) => {
+  try {
+    const result = await management.users.getAuthenticationMethods({ id: req.user.sub });
+    res.json(result.data);
+  } catch (err) {
+    console.error('[authenticators] Error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete a specific authenticator by ID
+app.delete('/api/authenticators/:authenticatorId', requireAuth, async (req, res) => {
+  try {
+    await management.users.deleteAuthenticationMethod({
+      id: req.user.sub,
+      authentication_method_id: req.params.authenticatorId,
+    });
+    res.json({ message: 'Authenticator removed.' });
+  } catch (err) {
+    console.error('[authenticators/delete] Error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── /api/me ───────────────────────────────────────────────────────────────────
 app.get('/api/me', requireAuth, async (req, res) => {
   try {

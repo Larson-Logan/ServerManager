@@ -31,7 +31,11 @@ export function Profile() {
   // Password reset state
   const [resetState, setResetState] = useState('idle'); // idle | loading | success | error
   const [resetError, setResetError] = useState('');
+  // MFA
   const [mfaLoading, setMfaLoading] = useState(false);
+  const [authenticators, setAuthenticators] = useState([]);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState(null);
 
   // Active section for left nav
   const [activeSection, setActiveSection] = useState('profile');
@@ -56,6 +60,19 @@ export function Profile() {
       }
     }
     fetchRoles();
+  }, [getAccessTokenSilently]);
+
+  // Fetch enrolled authenticators
+  useEffect(() => {
+    async function fetchAuth() {
+      try {
+        const token = await getAccessTokenSilently();
+        const res = await fetch('/api/authenticators', { headers: { Authorization: `Bearer ${token}` } });
+        if (res.ok) setAuthenticators(await res.json());
+      } catch (err) { console.error('Failed to fetch authenticators:', err); }
+      finally { setAuthLoading(false); }
+    }
+    fetchAuth();
   }, [getAccessTokenSilently]);
 
   useEffect(() => { document.title = 'Account | LarsonServer'; }, []);
@@ -111,6 +128,31 @@ export function Profile() {
       setMfaLoading(false);
     }
   };
+
+  const handleDeleteAuthenticator = async (id) => {
+    if (!window.confirm('Remove this authenticator? You can re-enroll afterwards.')) return;
+    setDeletingId(id);
+    try {
+      const token = await getAccessTokenSilently();
+      const res = await fetch(`/api/authenticators/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) setAuthenticators(prev => prev.filter(a => a.id !== id));
+      else { const d = await res.json(); alert('Error: ' + d.error); }
+    } catch (err) { alert('Delete failed: ' + err.message); }
+    finally { setDeletingId(null); }
+  };
+
+  const mfaTypeLabel = (type) => ({
+    'totp': 'Authenticator App (TOTP)',
+    'sms': 'SMS',
+    'email': 'Email OTP',
+    'guardian': 'Auth0 Guardian',
+    'recovery-code': 'Recovery Codes',
+    'webauthn-roaming': 'Security Key (Passkey)',
+    'webauthn-platform': 'Device Biometrics (Passkey)',
+  })[type] || type;
 
   const navItems = [
     { id: 'profile', label: 'Profile', icon: User },
@@ -258,29 +300,54 @@ export function Profile() {
                 </button>
               </div>
 
-              {/* MFA */}
-              <div className="flex flex-col sm:flex-row items-center justify-between p-4 bg-zinc-900/50 rounded-xl border border-zinc-800/50 hover:border-zinc-700 transition-colors gap-4">
-                <div className="flex items-center gap-4 w-full sm:w-auto">
-                  <div className="w-10 h-10 rounded-full bg-electric-blue/10 flex flex-shrink-0 items-center justify-center text-electric-blue drop-shadow-[0_0_8px_rgba(0,240,255,0.4)]">
-                    <Shield size={18} />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-white">Multi-Factor Authentication (MFA)</p>
-                    <p className="text-[10px] text-zinc-500">Enroll or manage your OTP app, SMS, or other second factors.</p>
-                    <div className="mt-1.5 flex items-center gap-2">
-                      <div className="h-1.5 w-1.5 rounded-full bg-electric-blue animate-pulse drop-shadow-[0_0_4px_rgba(0,240,255,0.8)]" />
-                      <span className="text-[10px] text-zinc-400 uppercase font-bold tracking-widest">Active Protection Available</span>
+              {/* MFA — Authenticator list */}
+              <div className="p-4 bg-zinc-900/50 rounded-xl border border-zinc-800/50 hover:border-zinc-700 transition-colors">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-electric-blue/10 flex flex-shrink-0 items-center justify-center text-electric-blue drop-shadow-[0_0_8px_rgba(0,240,255,0.4)]">
+                      <Shield size={18} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-white">Multi-Factor Authentication</p>
+                      <p className="text-[10px] text-zinc-500">Your enrolled second factors.</p>
                     </div>
                   </div>
+                  <button
+                    onClick={handleMfaEnroll}
+                    disabled={mfaLoading}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors whitespace-nowrap
+                      ${mfaLoading ? 'bg-zinc-700 border-zinc-600 text-zinc-400 cursor-wait' : 'bg-electric-blue/10 hover:bg-electric-blue/20 text-electric-blue border-electric-blue/20'}`}
+                  >
+                    {mfaLoading ? 'Opening...' : '+ Add New'}
+                  </button>
                 </div>
-                <button
-                  onClick={handleMfaEnroll}
-                  disabled={mfaLoading}
-                  className={`w-full sm:w-auto px-4 py-2 rounded-lg text-xs font-medium border transition-colors whitespace-nowrap text-center
-                    ${mfaLoading ? 'bg-zinc-700 border-zinc-600 text-zinc-400 cursor-wait' : 'bg-electric-blue/10 hover:bg-electric-blue/20 text-electric-blue border-electric-blue/20'}`}
-                >
-                  {mfaLoading ? 'Opening...' : 'Manage MFA'}
-                </button>
+
+                {authLoading ? (
+                  <div className="text-xs text-zinc-500 animate-pulse pl-14">Loading authenticators...</div>
+                ) : authenticators.length === 0 ? (
+                  <div className="text-xs text-zinc-600 italic pl-14">No MFA methods enrolled. Click &quot;Add New&quot; to enroll.</div>
+                ) : (
+                  <div className="space-y-2 mt-2">
+                    {authenticators.map(auth => (
+                      <div key={auth.id} className="flex items-center justify-between pl-14 pr-1 py-2 rounded-lg bg-zinc-900/80 border border-zinc-800/50 group">
+                        <div>
+                          <p className="text-xs font-medium text-white">{mfaTypeLabel(auth.type)}</p>
+                          {auth.name && <p className="text-[10px] text-zinc-500">{auth.name}</p>}
+                          <p className="text-[10px] text-zinc-600">
+                            {auth.confirmed ? '✓ Confirmed' : '⚠ Not confirmed'}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteAuthenticator(auth.id)}
+                          disabled={deletingId === auth.id}
+                          className="px-2.5 py-1 text-[10px] font-semibold text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg border border-transparent hover:border-red-500/20 transition-colors disabled:opacity-50"
+                        >
+                          {deletingId === auth.id ? 'Removing...' : 'Remove'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Passkeys */}
