@@ -1,11 +1,32 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Layout } from '../components/Layout'
 import { User, Shield, Mail, Key, UserCheck, Monitor as MonitorIcon } from 'lucide-react'
 import { useAuth0 } from '@auth0/auth0-react'
 
 export function Profile() {
-  const { user } = useAuth0();
-  const userRoles = user?.['https://larsonserver.ddns.net/roles'] || [];
+  const { user, getAccessTokenSilently } = useAuth0();
+  const [userRoles, setUserRoles] = useState([]);
+  const [rolesLoading, setRolesLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchRoles() {
+      try {
+        const token = await getAccessTokenSilently();
+        const res = await fetch('/api/me', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setUserRoles(data.roles || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch roles:', err);
+      } finally {
+        setRolesLoading(false);
+      }
+    }
+    fetchRoles();
+  }, [getAccessTokenSilently]);
 
   return (
     <Layout activeItemId="profile">
@@ -30,8 +51,10 @@ export function Profile() {
               />
               <div className="text-center md:text-left">
                 <h2 className="text-3xl font-bold text-white">{user?.nickname || user?.name}</h2>
-                <div className="flex items-center justify-center md:justify-start gap-2 mt-2">
-                   {userRoles.length > 0 ? (
+                 <div className="flex items-center justify-center md:justify-start gap-2 mt-2">
+                   {rolesLoading ? (
+                     <span className="px-2.5 py-0.5 rounded-full bg-zinc-800 text-zinc-500 text-xs font-medium border border-zinc-700 animate-pulse">Loading roles...</span>
+                   ) : userRoles.length > 0 ? (
                      userRoles.map(role => (
                        <span key={role} className="px-2.5 py-0.5 rounded-full bg-electric-blue/10 text-electric-blue text-xs font-semibold border border-electric-blue/20 flex items-center gap-1.5 uppercase tracking-wider">
                          <Shield size={10} /> {role}
@@ -42,7 +65,7 @@ export function Profile() {
                        No Assigned Roles
                      </span>
                    )}
-                </div>
+                 </div>
               </div>
             </div>
 
