@@ -26,7 +26,13 @@ export function Dashboard() {
     }
     fetchRoles();
   }, [getAccessTokenSilently]);
-  
+
+  // Dynamic tab title
+  useEffect(() => {
+    const titles = { hub: 'Dashboard', explore: 'Explore' };
+    document.title = `${titles[activeTab] || 'Dashboard'} | LarsonServer`;
+  }, [activeTab]);
+
   const isServerManager = userRoles.includes('server_manager') || userRoles.includes('admin');
   
   const navItems = [

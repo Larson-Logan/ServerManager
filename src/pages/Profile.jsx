@@ -28,6 +28,8 @@ export function Profile() {
     fetchRoles();
   }, [getAccessTokenSilently]);
 
+  useEffect(() => { document.title = 'Account | LarsonServer'; }, []);
+
   return (
     <Layout activeItemId="profile">
       <div className="mb-6 border-b border-zinc-800 pb-4">

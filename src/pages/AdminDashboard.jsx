@@ -100,6 +100,8 @@ const CustomRoleSelect = ({ user, currentRoles, isAdmin, onRoleChange }) => {
 };
 
 export function AdminDashboard() {
+  useEffect(() => { document.title = 'Admin Panel | LarsonServer'; }, []);
+
   const [activeTab, setActiveTab] = useState('metrics'); // 'metrics' or 'users'
   const { getAccessTokenSilently: getToken } = useAuth0();
   
