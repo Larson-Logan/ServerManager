@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Layout } from '../components/Layout'
 import { BookOpen, Map, MessageSquare, Compass, Rocket, Server, Shield } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
@@ -8,9 +8,24 @@ export function Dashboard() {
   const [activeTab, setActiveTab] = useState('hub');
   const navigate = useNavigate();
   
-  const { user } = useAuth0();
-  const userRoles = user?.['https://larsonserver.ddns.net/roles'] || [];
-  console.log('Dashboard User Roles:', userRoles);
+  const { getAccessTokenSilently } = useAuth0();
+  const [userRoles, setUserRoles] = useState([]);
+
+  useEffect(() => {
+    async function fetchRoles() {
+      try {
+        const token = await getAccessTokenSilently();
+        const res = await fetch('/api/me', { headers: { Authorization: `Bearer ${token}` } });
+        if (res.ok) {
+          const data = await res.json();
+          setUserRoles(data.roles || []);
+        }
+      } catch (err) {
+        console.error('Dashboard: failed to fetch roles', err);
+      }
+    }
+    fetchRoles();
+  }, [getAccessTokenSilently]);
   
   const isServerManager = userRoles.includes('server_manager') || userRoles.includes('admin');
   
