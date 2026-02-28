@@ -137,8 +137,12 @@ app.get('/api/oidc/userinfo', async (req, res) => {
     userData.preferred_username = cleanUsername;
 
     const customRolesNamespace = 'https://larsonserver.ddns.net/roles';
-    const auth0Roles = userData[customRolesNamespace] || [];
-    console.log(`[OIDC UserInfo] Raw Auth0 Roles for ${userData.email}:`, auth0Roles);
+    // Try to find roles in multiple possible locations
+    const rawRoles = userData[customRolesNamespace] || userData.roles || userData['https://larsonserver.ddns.net/app_metadata']?.roles || [];
+    const auth0Roles = (Array.isArray(rawRoles) ? rawRoles : [rawRoles]).map(r => String(r).toLowerCase());
+    
+    console.log(`[OIDC UserInfo] Claims available: ${Object.keys(userData).join(', ')}`);
+    console.log(`[OIDC UserInfo] Normalized Roles for ${userData.email}:`, auth0Roles);
     
     // AMP expects "groups" to be an array of strings. 
     // We send multiple variations to ensure AMP matches one.
