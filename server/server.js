@@ -54,14 +54,21 @@ const requireAuth = (req, res, next) => {
   });
 };
 
-const requireAdmin = (req, res, next) => {
-  const customRolesClaim = `https://larsonserver.ddns.net/roles`;
-  const roles = req.user[customRolesClaim] || [];
-  if (!roles.includes('admin')) {
-     return res.status(403).json({ error: 'Forbidden: Admin access only' });
+const requireAdmin = async (req, res, next) => {
+  try {
+    const userId = req.user.sub;
+    const liveUser = await management.users.get({ id: userId });
+    const roles = liveUser.data.app_metadata?.roles || [];
+    if (!roles.includes('admin')) {
+      return res.status(403).json({ error: 'Forbidden: Admin access only' });
+    }
+    next();
+  } catch (err) {
+    console.error('[requireAdmin] Failed to verify live roles:', err.message);
+    return res.status(403).json({ error: 'Forbidden: Could not verify admin role' });
   }
-  next();
 };
+
 
 const management = new ManagementClient({
   domain: AUTH0_DOMAIN,
