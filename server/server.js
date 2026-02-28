@@ -2,6 +2,7 @@
 /* eslint-disable no-undef */
 // server.js
 const express = require('express');
+console.log(">>> AUTH0 PROXY VERSION 2.2 STARTING <<<");
 const cors = require('cors');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
