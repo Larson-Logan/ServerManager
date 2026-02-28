@@ -36,6 +36,7 @@ export function Profile() {
   const [authenticators, setAuthenticators] = useState([]);
   const [authLoading, setAuthLoading] = useState(true);
   const [deletingId, setDeletingId] = useState(null);
+  const [authError, setAuthError] = useState(null);
 
   // Active section for left nav
   const [activeSection, setActiveSection] = useState('profile');
@@ -68,8 +69,13 @@ export function Profile() {
       try {
         const token = await getAccessTokenSilently();
         const res = await fetch('/api/authenticators', { headers: { Authorization: `Bearer ${token}` } });
-        if (res.ok) setAuthenticators(await res.json());
-      } catch (err) { console.error('Failed to fetch authenticators:', err); }
+        const data = await res.json();
+        if (res.ok) setAuthenticators(Array.isArray(data) ? data : []);
+        else setAuthError(data.error || `Error ${res.status}`);
+      } catch (err) {
+        console.error('Failed to fetch authenticators:', err);
+        setAuthError(err.message);
+      }
       finally { setAuthLoading(false); }
     }
     fetchAuth();
@@ -325,6 +331,10 @@ export function Profile() {
 
                 {authLoading ? (
                   <div className="text-xs text-zinc-500 animate-pulse pl-14">Loading authenticators...</div>
+                ) : authError ? (
+                  <div className="text-xs text-red-400 bg-red-400/5 border border-red-400/10 p-2 rounded-lg ml-14">
+                    Error: {authError}
+                  </div>
                 ) : authenticators.length === 0 ? (
                   <div className="text-xs text-zinc-600 italic pl-14">No MFA methods enrolled. Click &quot;Add New&quot; to enroll.</div>
                 ) : (
