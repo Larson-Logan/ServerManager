@@ -152,8 +152,27 @@ export function AdminDashboard() {
   }, [fetchData]);
 
   const handleDeleteUser = async (userId) => {
-     // TODO: Implement backend route to safely delete provisioned users
-     alert(`User deletion not yet implemented on the backend! Requires a DELETE /api/users/${userId} endpoint.`);
+    if (!window.confirm('Are you sure you want to permanently delete this user? This action cannot be undone.')) return;
+    
+    try {
+      const token = await getToken();
+      const res = await fetch(`/api/users/${userId}`, {
+        method: 'DELETE',
+        headers: { 
+          'Authorization': `Bearer ${token}` 
+        }
+      });
+      
+      if (res.ok) {
+        setUsers(users.filter(u => u.id !== userId));
+      } else {
+        const err = await res.json();
+        alert(`Error deleting user: ${err.error || 'Unknown error'}`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Failed to delete user.');
+    }
   };
 
   const handleRoleChange = async (userId, newRolesArray) => {

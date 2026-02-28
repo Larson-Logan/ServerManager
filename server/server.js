@@ -290,6 +290,21 @@ app.post('/api/deny-request', requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
+// Delete a provisioned user
+app.delete('/api/users/:id', requireAuth, requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  if (!id) return res.status(400).json({ error: 'User ID required' });
+
+  try {
+    await management.users.delete({ id });
+    console.log(`Successfully deleted user ${id}`);
+    res.json({ message: 'User deleted successfully' });
+  } catch (error) {
+    console.error("User Deletion Error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Backend proxy running locally on http://localhost:${PORT}`);
