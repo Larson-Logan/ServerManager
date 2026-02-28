@@ -349,10 +349,10 @@ export function Profile() {
                     </div>
                   ) : (
                     <div className="space-y-2 ml-14">
-                      {authenticators.filter(a => a.factor_type === 'guardian').length === 0 ? (
+                      {authenticators.filter(a => !a.auth_method?.includes('webauthn')).length === 0 ? (
                         <p className="text-xs text-zinc-600 italic">No MFA methods enrolled.</p>
                       ) : (
-                        authenticators.filter(a => a.factor_type === 'guardian').map(auth => (
+                        authenticators.filter(a => !a.auth_method?.includes('webauthn')).map(auth => (
                           <div key={auth.id} className="flex items-center justify-between pr-1 py-2 rounded-lg bg-zinc-900/80 border border-zinc-800/50 group">
                             <div>
                               <p className="text-xs font-medium text-white">{mfaTypeLabel(auth.auth_method)}</p>
@@ -396,16 +396,16 @@ export function Profile() {
                   </div>
 
                   <div className="space-y-2 ml-14">
-                    {authenticators.filter(a => a.factor_type === 'webauthn').length === 0 && !authLoading ? (
+                    {authenticators.filter(a => a.auth_method?.includes('webauthn')).length === 0 && !authLoading ? (
                       <p className="text-xs text-zinc-600 italic">No passkeys enrolled.</p>
                     ) : (
-                      authenticators.filter(a => a.factor_type === 'webauthn').map(auth => (
+                      authenticators.filter(a => a.auth_method?.includes('webauthn')).map(auth => (
                         <div key={auth.id} className="flex items-center justify-between pr-1 py-2 rounded-lg bg-zinc-900/80 border border-zinc-800/50 group">
                           <div>
                             <p className="text-xs font-medium text-white">{mfaTypeLabel(auth.auth_method)}</p>
                             <p className="text-[10px] text-zinc-500">{auth.friendly_name || 'Generic Passkey'}</p>
                             <p className="text-[10px] text-zinc-600">
-                              ✓ Secure Method {auth.enrolled_at ? ` · ${new Date(auth.enrolled_at).toLocaleDateString()}` : ''}
+                              {auth.confirmed ? '✓ Secure Method' : '⚠ Not confirmed'}{auth.enrolled_at ? ` · ${new Date(auth.enrolled_at).toLocaleDateString()}` : ''}
                             </p>
                           </div>
                           <button
