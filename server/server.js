@@ -228,23 +228,50 @@ app.post('/api/mfa-enrollment', requireAuth, async (req, res) => {
 });
 
 // ── MFA Authenticator Management ──────────────────────────────────────────────
-// List Guardian MFA enrollments for the current user
+// List all security factors (Guardian MFA + WebAuthn/Passkeys)
 app.get('/api/authenticators', requireAuth, async (req, res) => {
   try {
-    const result = await management.users.getEnrollments({ id: req.user.sub });
-    res.json(result.data);
+    const [guardianRes, webauthnRes] = await Promise.all([
+      management.users.getEnrollments({ id: req.user.sub }),
+      management.users.getAuthenticationMethods({ id: req.user.sub }),
+    ]);
+
+    // Combine them, marking the source so the frontend/delete logic knows which is which
+    const combined = [
+      ...(guardianRes.data || []).map(e => ({ ...e, factor_type: 'guardian' })),
+      ...(webauthnRes.data || []).map(m => ({
+        id: m.id,
+        auth_method: m.type,
+        friendly_name: m.name,
+        confirmed: true, // WebAuthn methods are confirmed if they exist
+        enrolled_at: m.created_at,
+        factor_type: 'webauthn',
+        ...m
+      })),
+    ];
+
+    res.json(combined);
   } catch (err) {
     console.error('[authenticators] Error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
 
-// Delete a specific Guardian enrollment by ID
-app.delete('/api/authenticators/:enrollmentId', requireAuth, async (req, res) => {
+// Delete a specific factor (handles both Guardian and WebAuthn)
+app.delete('/api/authenticators/:id', requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const { factor_type } = req.query; // Expect frontend to pass this for safety
+
   try {
-    await management.guardian.deleteGuardianEnrollment({
-      id: req.params.enrollmentId,
-    });
+    if (factor_type === 'webauthn' || id.startsWith('webauthn|')) {
+      await management.users.deleteAuthenticationMethod({
+        id,
+        user_id: req.user.sub,
+      });
+    } else {
+      // Default to Guardian for backward compatibility or if explicitly requested
+      await management.guardian.deleteGuardianEnrollment({ id });
+    }
     res.json({ message: 'Authenticator removed.' });
   } catch (err) {
     console.error('[authenticators/delete] Error:', err.message);

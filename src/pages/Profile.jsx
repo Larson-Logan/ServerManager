@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Layout } from '../components/Layout'
 import { User, Shield, Mail, Key, UserCheck, Monitor as MonitorIcon, Fingerprint, Home } from 'lucide-react'
 import { useAuth0 } from '@auth0/auth0-react'
@@ -6,20 +6,6 @@ import { useNavigate } from 'react-router-dom'
 
 const AUTH0_DOMAIN = import.meta.env.VITE_AUTH0_DOMAIN;
 const AUTH0_CLIENT_ID = import.meta.env.VITE_AUTH0_CLIENT_ID;
-
-// Redirect to Auth0 Universal Login for MFA/passkey enrollment
-function buildAuth0Redirect(acrValues) {
-  const params = new URLSearchParams({
-    response_type: 'code',
-    client_id: AUTH0_CLIENT_ID,
-    redirect_uri: window.location.origin,
-    scope: 'openid profile email',
-    acr_values: acrValues,
-    max_age: '0',
-    prompt: 'login',
-  });
-  return `https://${AUTH0_DOMAIN}/authorize?${params.toString()}`;
-}
 
 
 export function Profile() {
@@ -64,22 +50,24 @@ export function Profile() {
   }, [getAccessTokenSilently]);
 
   // Fetch enrolled authenticators
-  useEffect(() => {
-    async function fetchAuth() {
-      try {
-        const token = await getAccessTokenSilently();
-        const res = await fetch('/api/authenticators', { headers: { Authorization: `Bearer ${token}` } });
-        const data = await res.json();
-        if (res.ok) setAuthenticators(Array.isArray(data) ? data : []);
-        else setAuthError(data.error || `Error ${res.status}`);
-      } catch (err) {
-        console.error('Failed to fetch authenticators:', err);
-        setAuthError(err.message);
-      }
-      finally { setAuthLoading(false); }
+  const fetchAuth = useCallback(async () => {
+    try {
+      setAuthLoading(true);
+      const token = await getAccessTokenSilently();
+      const res = await fetch('/api/authenticators', { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (res.ok) setAuthenticators(Array.isArray(data) ? data : []);
+      else setAuthError(data.error || `Error ${res.status}`);
+    } catch (err) {
+      console.error('Failed to fetch authenticators:', err);
+      setAuthError(err.message);
     }
-    fetchAuth();
+    finally { setAuthLoading(false); }
   }, [getAccessTokenSilently]);
+
+  useEffect(() => {
+    fetchAuth();
+  }, [fetchAuth]);
 
   useEffect(() => { document.title = 'Account | LarsonServer'; }, []);
 
@@ -135,18 +123,42 @@ export function Profile() {
     }
   };
 
-  const handleDeleteAuthenticator = async (id) => {
-    if (!window.confirm('Remove this authenticator? You can re-enroll afterwards.')) return;
-    setDeletingId(id);
+  const handlePasskeyEnroll = () => {
+    const domain = import.meta.env.VITE_AUTH0_DOMAIN;
+    const clientId = import.meta.env.VITE_AUTH0_CLIENT_ID;
+    const redirectUri = window.location.origin + '/dashboard';
+    
+    // Force re-auth with max_age=0 and specify WebAuthn via acr_values
+    const url = `https://${domain}/authorize?` + 
+      `response_type=code&` +
+      `client_id=${clientId}&` +
+      `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+      `scope=openid profile email&` +
+      `acr_values=${encodeURIComponent('https://schemas.openid.net/pape/policies/2007/06/webauthn')}&` +
+      `prompt=login&` +
+      `max_age=0`;
+    
+    window.location.href = url;
+  };
+
+  const handleDeleteAuthenticator = async (auth) => {
+    if (!window.confirm(`Remove this ${auth.factor_type === 'webauthn' ? 'passkey' : 'authenticator'}? You can re-enroll afterwards.`)) return;
+    setDeletingId(auth.id);
     try {
       const token = await getAccessTokenSilently();
-      const res = await fetch(`/api/authenticators/${id}`, {
+      const res = await fetch(`/api/authenticators/${auth.id}?factor_type=${auth.factor_type}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.ok) setAuthenticators(prev => prev.filter(a => a.id !== id));
-      else { const d = await res.json(); alert('Error: ' + d.error); }
-    } catch (err) { alert('Delete failed: ' + err.message); }
+      if (res.ok) {
+        setAuthenticators(prev => prev.filter(a => a.id !== auth.id));
+      } else {
+        const d = await res.json();
+        alert('Error: ' + d.error);
+      }
+    } catch (err) {
+      alert('Delete failed: ' + err.message);
+    }
     finally { setDeletingId(null); }
   };
 
@@ -306,84 +318,109 @@ export function Profile() {
                   {resetState === 'loading' ? 'Sending...' : resetState === 'success' ? 'Email Sent ✓' : 'Send Reset Email'}
                 </button>
               </div>
-
-              {/* MFA — Authenticator list */}
-              <div className="p-4 bg-zinc-900/50 rounded-xl border border-zinc-800/50 hover:border-zinc-700 transition-colors">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-electric-blue/10 flex flex-shrink-0 items-center justify-center text-electric-blue drop-shadow-[0_0_8px_rgba(0,240,255,0.4)]">
-                      <Shield size={18} />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-white">Multi-Factor Authentication</p>
-                      <p className="text-[10px] text-zinc-500">Your enrolled second factors.</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={handleMfaEnroll}
-                    disabled={mfaLoading}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors whitespace-nowrap
-                      ${mfaLoading ? 'bg-zinc-700 border-zinc-600 text-zinc-400 cursor-wait' : 'bg-electric-blue/10 hover:bg-electric-blue/20 text-electric-blue border-electric-blue/20'}`}
-                  >
-                    {mfaLoading ? 'Opening...' : '+ Add New'}
-                  </button>
-                </div>
-
-                {authLoading ? (
-                  <div className="text-xs text-zinc-500 animate-pulse pl-14">Loading authenticators...</div>
-                ) : authError ? (
-                  <div className="text-xs text-red-400 bg-red-400/5 border border-red-400/10 p-2 rounded-lg ml-14">
-                    Error: {authError}
-                  </div>
-                ) : authenticators.length === 0 ? (
-                  <div className="text-xs text-zinc-600 italic pl-14">No MFA methods enrolled. Click &quot;Add New&quot; to enroll.</div>
-                ) : (
-                  <div className="space-y-2 mt-2">
-                    {authenticators.map(auth => (
-                      <div key={auth.id} className="flex items-center justify-between pl-14 pr-1 py-2 rounded-lg bg-zinc-900/80 border border-zinc-800/50 group">
-                        <div>
-                          <p className="text-xs font-medium text-white">{mfaTypeLabel(auth.auth_method)}</p>
-                          {auth.friendly_name && <p className="text-[10px] text-zinc-500">{auth.friendly_name}</p>}
-                          <p className="text-[10px] text-zinc-600">
-                            {auth.confirmed ? '✓ Confirmed' : '⚠ Not confirmed'}{auth.enrolled_at ? ` · ${new Date(auth.enrolled_at).toLocaleDateString()}` : ''}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => handleDeleteAuthenticator(auth.id)}
-                          disabled={deletingId === auth.id}
-                          className="px-2.5 py-1 text-[10px] font-semibold text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg border border-transparent hover:border-red-500/20 transition-colors disabled:opacity-50"
-                        >
-                          {deletingId === auth.id ? 'Removing...' : 'Remove'}
-                        </button>
+              <div className="bg-zinc-900/40 rounded-2xl border border-zinc-800/80 p-6 space-y-6">
+                <div className="flex flex-col gap-4">
+                  {/* MFA List */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-full bg-cyber-cyan/10 flex flex-shrink-0 items-center justify-center text-cyber-cyan shadow-[0_0_15px_rgba(0,255,242,0.15)]">
+                        <Shield size={18} />
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Passkeys */}
-              <div className="flex flex-col sm:flex-row items-center justify-between p-4 bg-zinc-900/50 rounded-xl border border-zinc-800/50 hover:border-zinc-700 transition-colors gap-4">
-                <div className="flex items-center gap-4 w-full sm:w-auto">
-                  <div className="w-10 h-10 rounded-full bg-cyber-purple/10 flex flex-shrink-0 items-center justify-center text-cyber-purple drop-shadow-[0_0_8px_rgba(176,38,255,0.4)]">
-                    <Fingerprint size={18} />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-white">Passkeys</p>
-                    <p className="text-[10px] text-zinc-500">Add a biometric or hardware security key for passwordless login.</p>
-                    <div className="mt-1.5 flex items-center gap-2">
-                      <div className="h-1.5 w-1.5 rounded-full bg-cyber-purple drop-shadow-[0_0_4px_rgba(176,38,255,0.8)]" />
-                      <span className="text-[10px] text-zinc-400 uppercase font-bold tracking-widest">WebAuthn / FIDO2</span>
+                      <div>
+                        <p className="text-sm font-semibold text-white">Multi-Factor Authentication</p>
+                        <p className="text-[10px] text-zinc-500">Traditional OTP and Push methods.</p>
+                      </div>
                     </div>
+                    <button
+                      onClick={handleMfaEnroll}
+                      disabled={mfaLoading}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors whitespace-nowrap
+                        ${mfaLoading ? 'bg-zinc-700 border-zinc-600 text-zinc-400 cursor-wait' : 'bg-cyber-cyan/10 hover:bg-cyber-cyan/20 text-cyber-cyan border-cyber-cyan/20'}`}
+                    >
+                      {mfaLoading ? 'Opening...' : '+ Add MFA'}
+                    </button>
+                  </div>
+
+                  {authLoading ? (
+                    <div className="text-xs text-zinc-500 animate-pulse pl-14">Loading...</div>
+                  ) : authError ? (
+                    <div className="text-xs text-red-400 bg-red-400/5 border border-red-400/10 p-2 rounded-lg ml-14">
+                      Error: {authError}
+                    </div>
+                  ) : (
+                    <div className="space-y-2 ml-14">
+                      {authenticators.filter(a => a.factor_type === 'guardian').length === 0 ? (
+                        <p className="text-xs text-zinc-600 italic">No MFA methods enrolled.</p>
+                      ) : (
+                        authenticators.filter(a => a.factor_type === 'guardian').map(auth => (
+                          <div key={auth.id} className="flex items-center justify-between pr-1 py-2 rounded-lg bg-zinc-900/80 border border-zinc-800/50 group">
+                            <div>
+                              <p className="text-xs font-medium text-white">{mfaTypeLabel(auth.auth_method)}</p>
+                              {auth.friendly_name && <p className="text-[10px] text-zinc-500">{auth.friendly_name}</p>}
+                              <p className="text-[10px] text-zinc-600">
+                                {auth.confirmed ? '✓ Confirmed' : '⚠ Not confirmed'}{auth.enrolled_at ? ` · ${new Date(auth.enrolled_at).toLocaleDateString()}` : ''}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => handleDeleteAuthenticator(auth)}
+                              disabled={deletingId === auth.id}
+                              className="px-2.5 py-1 text-[10px] font-semibold text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg border border-transparent hover:border-red-500/20 transition-colors disabled:opacity-50"
+                            >
+                              {deletingId === auth.id ? 'Removing...' : 'Remove'}
+                            </button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+
+                  <div className="h-px bg-zinc-800/50 my-2" />
+
+                  {/* Passkeys List */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-full bg-cyber-purple/10 flex flex-shrink-0 items-center justify-center text-cyber-purple shadow-[0_0_15px_rgba(176,38,255,0.15)]">
+                        <Fingerprint size={18} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-white">Passkeys & Biometrics</p>
+                        <p className="text-[10px] text-zinc-500">Login with fingerprint, face, or hardware key.</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handlePasskeyEnroll}
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium border bg-cyber-purple/10 hover:bg-cyber-purple/20 text-cyber-purple border-cyber-purple/20 transition-colors whitespace-nowrap"
+                    >
+                      + Add Passkey
+                    </button>
+                  </div>
+
+                  <div className="space-y-2 ml-14">
+                    {authenticators.filter(a => a.factor_type === 'webauthn').length === 0 && !authLoading ? (
+                      <p className="text-xs text-zinc-600 italic">No passkeys enrolled.</p>
+                    ) : (
+                      authenticators.filter(a => a.factor_type === 'webauthn').map(auth => (
+                        <div key={auth.id} className="flex items-center justify-between pr-1 py-2 rounded-lg bg-zinc-900/80 border border-zinc-800/50 group">
+                          <div>
+                            <p className="text-xs font-medium text-white">{mfaTypeLabel(auth.auth_method)}</p>
+                            <p className="text-[10px] text-zinc-500">{auth.friendly_name || 'Generic Passkey'}</p>
+                            <p className="text-[10px] text-zinc-600">
+                              ✓ Secure Method {auth.enrolled_at ? ` · ${new Date(auth.enrolled_at).toLocaleDateString()}` : ''}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => handleDeleteAuthenticator(auth)}
+                            disabled={deletingId === auth.id}
+                            className="px-2.5 py-1 text-[10px] font-semibold text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg border border-transparent hover:border-red-500/20 transition-colors disabled:opacity-50"
+                          >
+                            {deletingId === auth.id ? 'Removing...' : 'Remove'}
+                          </button>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
-                <a
-                  href={buildAuth0Redirect('https://schemas.openid.net/pape/policies/2007/06/webauthn')}
-                  className="w-full sm:w-auto px-4 py-2 bg-cyber-purple/10 hover:bg-cyber-purple/20 text-cyber-purple rounded-lg text-xs font-medium border border-cyber-purple/20 transition-colors whitespace-nowrap text-center"
-                >
-                  Manage Passkeys
-                </a>
               </div>
-
             </div>
           </div>
         </div>
