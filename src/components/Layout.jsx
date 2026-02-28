@@ -141,7 +141,7 @@ export function Layout({ children, navItems = [], activeItemId, onNavigate }) {
           />
         </header>
 
-        <main className="flex-1 min-h-0 p-4 md:p-8 overflow-y-auto">
+        <main className="flex-1 min-h-0 p-4 md:p-8 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
           <div className="max-w-7xl mx-auto space-y-8">
             {children}
           </div>
