@@ -146,24 +146,29 @@ app.get('/api/oidc/userinfo', async (req, res) => {
     const userData = await auth0Response.json();
     console.log(`[OIDC UserInfo] Data fetched for: ${userData.email}`);
     
-    // Ensure nickname or name is mapped to 'username' if AMP requires it
-    // AMP DISALLOWS '@' IN USERNAMES - Sanitizing now.
+    // Sanitize username for AMP (no '@' or special chars allowed)
     const sanitizedEmailPrefix = userData.email.split('@')[0].replace(/[^a-zA-Z0-9]/g, '');
     const cleanUsername = (userData.nickname || sanitizedEmailPrefix || 'user').replace(/[^a-zA-Z0-9]/g, '');
-    
     userData.username = cleanUsername;
     userData.preferred_username = cleanUsername;
 
-    const customRolesNamespace = 'https://larsonserver.ddns.net/roles';
-    // Try to find roles in multiple possible locations
-    const rawRoles = userData[customRolesNamespace] || userData.roles || userData['https://larsonserver.ddns.net/app_metadata']?.roles || [];
-    const auth0Roles = (Array.isArray(rawRoles) ? rawRoles : [rawRoles]).map(r => String(r).toLowerCase());
+    // *** LIVE ROLE LOOKUP: bypass the stale JWT cache ***
+    // Fetch real roles directly from Auth0 Management API using the user's sub
+    let auth0Roles = [];
+    try {
+      const liveUser = await management.users.get({ id: userData.sub });
+      const liveRoles = liveUser.data.app_metadata?.roles || [];
+      auth0Roles = (Array.isArray(liveRoles) ? liveRoles : [liveRoles]).map(r => String(r).toLowerCase());
+      console.log(`[OIDC UserInfo] Live roles for ${userData.email}:`, auth0Roles);
+    } catch (mgmtErr) {
+      // Fallback to JWT claim if Management API fails
+      console.error(`[OIDC UserInfo] Management API failed, falling back to JWT claim:`, mgmtErr.message);
+      const customRolesNamespace = 'https://larsonserver.ddns.net/roles';
+      const rawRoles = userData[customRolesNamespace] || userData.roles || [];
+      auth0Roles = (Array.isArray(rawRoles) ? rawRoles : [rawRoles]).map(r => String(r).toLowerCase());
+    }
     
-    console.log(`[OIDC UserInfo] Claims available: ${Object.keys(userData).join(', ')}`);
-    console.log(`[OIDC UserInfo] Normalized Roles for ${userData.email}:`, auth0Roles);
-    
-    // AMP expects "groups" to be an array of strings. 
-    // We send multiple variations to ensure AMP matches one.
+    // Map Auth0 roles to AMP groups
     userData.groups = [];
     if (auth0Roles.includes('admin')) {
        userData.groups.push("AMP_SuperAdmin", "AMP_Super Admins");
