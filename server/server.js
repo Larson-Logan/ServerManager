@@ -143,6 +143,8 @@ app.get('/api/oidc/userinfo', async (req, res) => {
     userData.groups = [];
     if (auth0Roles.includes('admin')) {
        userData.groups.push("AMP_SuperAdmin", "AMP_Super Admins");
+    } else if (auth0Roles.includes('manager') || auth0Roles.includes('instancemgr')) {
+       userData.groups.push("AMP_Instance Manager", "AMP_Instance Managers");
     } else if (auth0Roles.includes('user')) {
        userData.groups.push("Users");
     } else {
