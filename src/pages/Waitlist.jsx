@@ -9,13 +9,12 @@ export function Waitlist() {
 
   useEffect(() => { document.title = 'Waitlist | LarsonServer'; }, []);
 
-
   return (
-    <div className="min-h-screen bg-zinc-950 text-white font-sans flex items-center justify-center p-6 relative overflow-hidden">
+    <div className="min-h-[100dvh] bg-zinc-950 text-white font-sans flex items-center justify-center p-6 relative overflow-y-auto">
       {/* Subtle Background Glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-electric-blue/5 rounded-full blur-[120px] pointer-events-none"></div>
 
-      <div className="max-w-md w-full glass-panel hover-glow p-8 rounded-3xl border border-glass-border shadow-2xl animate-in fade-in zoom-in duration-500 text-center relative z-10">
+      <div className="max-w-md w-full glass-panel hover-glow p-8 rounded-3xl border border-glass-border shadow-2xl animate-in fade-in zoom-in duration-500 text-center relative z-10 my-auto">
         <div className="h-16 w-16 rounded-2xl bg-electric-blue/10 flex items-center justify-center mb-6 mx-auto border border-electric-blue/20 shadow-[0_0_20px_rgba(0,240,255,0.15)]">
           <Clock size={32} className="text-electric-blue animate-pulse drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]" />
         </div>

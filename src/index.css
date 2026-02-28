@@ -42,6 +42,7 @@
   z-index: -1;
   overflow: hidden;
   background-color: #050505;
+  pointer-events: none;
 }
 
 .cyber-blob {

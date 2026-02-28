@@ -93,7 +93,7 @@ export function Layout({ children, navItems = [], activeItemId, onNavigate }) {
         <div className="cyber-blob cyber-blob-2"></div>
       </div>
       
-      <div className="flex h-screen w-full text-white font-sans bg-transparent relative z-10">
+      <div className="flex h-[100dvh] w-full text-white font-sans bg-transparent relative z-10">
 
         {/* ── DESKTOP SIDEBAR (hidden on mobile) ── */}
         <aside className="hidden md:flex w-64 h-full flex-col border-r border-glass-border bg-[#09090b]/80 backdrop-blur-md p-4 shadow-xl">
