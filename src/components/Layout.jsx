@@ -19,14 +19,22 @@ function SidebarContent({ navItems, activeItemId, onNavigate, user, logout, onCl
           <button
             key={item.id}
             onClick={() => handleNav(item.id)}
-            className={`w-full flex items-center gap-3 p-3 rounded-lg text-sm font-medium transition-all text-left ${
+            className={`relative w-full flex items-center gap-3 p-3 rounded-lg text-sm font-medium transition-all text-left overflow-hidden group ${
               activeItemId === item.id
-                ? 'bg-zinc-800 text-white border border-zinc-700 shadow-sm'
-                : 'hover:bg-zinc-800/50 hover:text-zinc-300 border border-transparent'
+                ? 'text-white bg-zinc-800/80 border border-zinc-700/50 shadow-md'
+                : 'hover:bg-zinc-800/40 hover:text-zinc-200 border border-transparent'
             }`}
           >
-            {item.icon && <item.icon size={18} className={activeItemId === item.id ? 'text-electric-blue' : 'text-zinc-500'} />}
-            {item.label}
+            {/* Active Indicator Glow */}
+            {activeItemId === item.id && (
+              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-electric-blue rounded-r-md nav-indicator-glow"></div>
+            )}
+            
+            <item.icon 
+              size={18} 
+              className={`transition-colors duration-300 ${activeItemId === item.id ? 'text-electric-blue drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]' : 'text-zinc-500 group-hover:text-zinc-400'}`} 
+            />
+            <span className="relative z-10">{item.label}</span>
           </button>
         ))}
 
@@ -41,16 +49,16 @@ function SidebarContent({ navItems, activeItemId, onNavigate, user, logout, onCl
         </div>
       </nav>
 
-      <div className="mt-auto pt-4 border-t border-zinc-800">
-        <div className="flex items-center gap-3 mb-4 p-2 bg-zinc-800/30 rounded-xl border border-zinc-800/50">
+      <div className="mt-auto pt-4 border-t border-zinc-800 border-opacity-50">
+        <div className="flex items-center gap-3 mb-4 p-2 bg-zinc-900/50 rounded-xl border border-zinc-700/50 shadow-inner">
           <img
             src={user?.picture}
             alt={user?.name}
-            className="w-10 h-10 rounded-full border border-zinc-700 shadow-sm"
+            className="w-10 h-10 rounded-full border border-zinc-600 shadow-sm"
           />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-white truncate">{user?.name}</p>
-            <p className="text-[10px] text-zinc-500 truncate">{user?.email}</p>
+            <p className="text-[10px] text-zinc-400 truncate">{user?.email}</p>
           </div>
         </div>
 
@@ -64,7 +72,7 @@ function SidebarContent({ navItems, activeItemId, onNavigate, user, logout, onCl
           </Link>
           <button
             onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}
-            className="w-full text-left px-3 py-2 text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-lg text-xs font-semibold transition-colors flex items-center gap-2"
+            className="w-full text-left px-3 py-2 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg text-xs font-semibold transition-colors flex items-center gap-2"
           >
             <span>Sign Out</span>
           </button>
@@ -79,10 +87,16 @@ export function Layout({ children, navItems = [], activeItemId, onNavigate }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="flex h-screen w-full bg-zinc-950 text-white font-sans">
+    <>
+      <div className="cyber-bg">
+        <div className="cyber-blob cyber-blob-1"></div>
+        <div className="cyber-blob cyber-blob-2"></div>
+      </div>
+      
+      <div className="flex h-screen w-full text-white font-sans bg-transparent relative z-10">
 
-      {/* ── DESKTOP SIDEBAR (hidden on mobile) ── */}
-      <aside className="hidden md:flex w-64 h-full flex-col border-r border-zinc-800 bg-zinc-900 p-4">
+        {/* ── DESKTOP SIDEBAR (hidden on mobile) ── */}
+        <aside className="hidden md:flex w-64 h-full flex-col border-r border-glass-border bg-[#09090b]/80 backdrop-blur-md p-4 shadow-xl">
         <SidebarContent
           navItems={navItems}
           activeItemId={activeItemId}
@@ -148,5 +162,6 @@ export function Layout({ children, navItems = [], activeItemId, onNavigate }) {
         </main>
       </div>
     </div>
+    </>
   );
 }

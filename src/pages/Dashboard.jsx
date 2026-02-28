@@ -84,24 +84,24 @@ export function Dashboard() {
 
       {activeTab === 'hub' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-          <a href="#" className="glass-panel p-6 rounded-2xl border border-zinc-800/50 hover:border-zinc-700 transition-colors group cursor-pointer">
-            <div className="h-10 w-10 rounded-lg bg-electric-blue/10 flex items-center justify-center mb-4 group-hover:bg-electric-blue/20 transition-colors border border-electric-blue/20">
-              <BookOpen size={20} className="text-electric-blue" />
+          <a href="#" className="glass-panel p-6 rounded-2xl hover-glow group cursor-pointer block">
+            <div className="h-10 w-10 rounded-xl bg-electric-blue/10 flex items-center justify-center mb-4 group-hover:bg-electric-blue/20 transition-all border border-electric-blue/20 shadow-[0_0_15px_rgba(0,240,255,0.1)]">
+              <BookOpen size={20} className="text-electric-blue group-hover:drop-shadow-[0_0_8px_rgba(0,240,255,0.8)] transition-all" />
             </div>
-            <h3 className="font-semibold text-white mb-2">Documentation</h3>
+            <h3 className="font-semibold text-white mb-2 group-hover:text-electric-blue transition-colors">Documentation</h3>
             <p className="text-sm text-zinc-400">Read the documentation and learn how to use the platform.</p>
           </a>
 
-          <a href="#" className="glass-panel p-6 rounded-2xl border border-zinc-800/50 hover:border-zinc-700 transition-colors group cursor-pointer">
-            <div className="h-10 w-10 rounded-lg bg-cyber-purple/10 flex items-center justify-center mb-4 group-hover:bg-cyber-purple/20 transition-colors border border-cyber-purple/20">
-              <Map size={20} className="text-cyber-purple" />
+          <a href="#" className="glass-panel p-6 rounded-2xl hover-glow group cursor-pointer block">
+            <div className="h-10 w-10 rounded-xl bg-cyber-purple/10 flex items-center justify-center mb-4 group-hover:bg-cyber-purple/20 transition-all border border-cyber-purple/20 shadow-[0_0_15px_rgba(176,38,255,0.1)]">
+              <Map size={20} className="text-cyber-purple group-hover:drop-shadow-[0_0_8px_rgba(176,38,255,0.8)] transition-all" />
             </div>
-            <h3 className="font-semibold text-white mb-2">Roadmap</h3>
+            <h3 className="font-semibold text-white mb-2 group-hover:text-cyber-purple transition-colors">Roadmap</h3>
             <p className="text-sm text-zinc-400">View upcoming features and track our development progress.</p>
           </a>
 
-          <a href="#" className="glass-panel p-6 rounded-2xl border border-zinc-800/50 hover:border-zinc-700 transition-colors group cursor-pointer">
-            <div className="h-10 w-10 rounded-lg bg-zinc-800 flex items-center justify-center mb-4 group-hover:bg-zinc-700 transition-colors border border-zinc-700">
+          <a href="#" className="glass-panel p-6 rounded-2xl hover-glow group cursor-pointer block">
+            <div className="h-10 w-10 rounded-xl bg-zinc-800/80 flex items-center justify-center mb-4 group-hover:bg-zinc-700 transition-all border border-zinc-700">
               <MessageSquare size={20} className="text-zinc-300" />
             </div>
             <h3 className="font-semibold text-white mb-2">Community Forum</h3>

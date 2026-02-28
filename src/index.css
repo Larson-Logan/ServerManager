@@ -7,8 +7,8 @@
 
   /* Glassmorphism Variables */
   --color-glass-base: rgba(9, 9, 11, 0.4);
-  --color-glass-border: rgba(255, 255, 255, 0.08);
-  --color-glass-border-hover: rgba(255, 255, 255, 0.15);
+  --color-glass-border: rgba(255, 255, 255, 0.05);
+  --color-glass-border-hover: rgba(0, 240, 255, 0.4); /* electric-blue glow */
 }
 
 @layer base {
@@ -17,17 +17,68 @@
   }
 
   body {
-    @apply bg-[#09090b] text-zinc-50 antialiased overflow-hidden selection:bg-electric-blue selection:text-black;
-    /* Subtle radial gradient background behind everything */
-    background-image: radial-gradient(
-      circle at 50% -20%,
-      rgba(0, 240, 255, 0.08) 0%,
-      transparent 60%
-    );
+    @apply bg-[#050505] text-zinc-50 antialiased overflow-hidden selection:bg-electric-blue selection:text-black min-h-screen relative;
   }
 }
 
 /* Premium Glass utility */
 .glass-panel {
-  @apply bg-glass-base backdrop-blur-xl border border-glass-border shadow-[0_4px_30px_rgba(0,0,0,0.1)];
+  @apply bg-glass-base backdrop-blur-xl border border-glass-border shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all duration-300 ease-out;
+}
+
+/* Premium Hover Glow */
+.hover-glow:hover {
+  @apply border-glass-border-hover bg-zinc-900/60 transform -translate-y-0.5;
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.1), inset 0 0 10px rgba(0, 240, 255, 0.05);
+}
+
+/* Animated Cyber Background */
+.cyber-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -1;
+  overflow: hidden;
+  background-color: #050505;
+}
+
+.cyber-blob {
+  position: absolute;
+  filter: blur(80px);
+  opacity: 0.15;
+  border-radius: 50%;
+  animation: float 20s infinite ease-in-out alternate;
+}
+
+.cyber-blob-1 {
+  background: var(--color-electric-blue);
+  width: 50vw;
+  height: 50vw;
+  top: -20%;
+  left: -10%;
+  animation-duration: 25s;
+}
+
+.cyber-blob-2 {
+  background: var(--color-cyber-purple);
+  width: 40vw;
+  height: 40vw;
+  bottom: -10%;
+  right: -5%;
+  animation-duration: 30s;
+  animation-direction: alternate-reverse;
+}
+
+@keyframes float {
+  0% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(5%, 10%) scale(1.1); }
+  66% { transform: translate(-5%, 5%) scale(0.9); }
+  100% { transform: translate(0, -5%) scale(1); }
+}
+
+/* Sidebar glow indicator */
+.nav-indicator-glow {
+  box-shadow: 0 0 10px var(--color-electric-blue);
 }

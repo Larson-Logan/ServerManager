@@ -320,12 +320,12 @@ export function AdminDashboard() {
                  Pending Approvals <span className="bg-electric-blue/20 text-electric-blue px-2 py-0.5 rounded-full text-xs">{requests.length}</span>
                </h3>
                {requests.length === 0 ? (
-                 <div className="text-zinc-500 text-sm italic glass-panel p-6 text-center rounded-2xl border border-dashed border-zinc-800 flex flex-col items-center">
+                 <div className="text-zinc-500 text-sm italic glass-panel hover-glow cursor-default p-6 text-center rounded-2xl border border-dashed border-zinc-800 flex flex-col items-center">
                     <Mail className="opacity-20 mb-2" size={24} />
                     Waitlist is clear.
                  </div>
                ) : (
-                 <div className="glass-panel border border-zinc-800/50 rounded-2xl shadow-xl overflow-x-auto">
+                 <div className="glass-panel border border-glass-border rounded-2xl shadow-xl overflow-x-auto">
                     <table className="w-full min-w-[560px] text-left text-sm text-zinc-400">
                       <thead className="bg-zinc-900/50 text-zinc-300">
                         <tr>
@@ -377,12 +377,12 @@ export function AdminDashboard() {
                  Provisioned Accounts <span className="bg-cyber-purple/20 text-cyber-purple px-2 py-0.5 rounded-full text-xs">{users.length}</span>
                </h3>
                {users.length === 0 ? (
-                 <div className="text-zinc-500 text-sm italic glass-panel p-6 text-center rounded-2xl border border-dashed border-zinc-800 flex flex-col items-center">
+                 <div className="text-zinc-500 text-sm italic glass-panel hover-glow cursor-default p-6 text-center rounded-2xl border border-dashed border-zinc-800 flex flex-col items-center">
                     <Users className="opacity-20 mb-2" size={24} />
                     No registered users yet.
                  </div>
                ) : (
-                 <div className="glass-panel border border-zinc-800/50 rounded-2xl shadow-xl overflow-x-auto">
+                 <div className="glass-panel border border-glass-border rounded-2xl shadow-xl overflow-x-auto">
                     <table className="w-full min-w-[560px] text-left text-sm text-zinc-400">
                       <thead className="bg-zinc-900/50 text-zinc-300">
                         <tr>
