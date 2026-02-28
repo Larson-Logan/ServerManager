@@ -47,12 +47,14 @@ function ProtectedRoute({ children, allowWaitlist = false }) {
     return <div>Redirecting to login...</div>;
   }
   
-  const userRoles = user?.['https://larsonserver.ddns.net/roles'] || [];
-  console.log('User Roles (ProtectedRoute):', userRoles);
-
   // Strictly block waitlisted users from the dashboard, UNLESS they are specifically allowed (like on the waitlist page itself)
   if (userRoles.includes('waitlist') && !allowWaitlist) {
     return <Navigate to="/waitlist" replace />;
+  }
+
+  // If we are on the waitlist page but the user is already approved, send them to the dashboard
+  if (allowWaitlist && !userRoles.includes('waitlist')) {
+     return <Navigate to="/dashboard" replace />;
   }
 
   return children;
