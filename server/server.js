@@ -95,7 +95,7 @@ app.get('/api/oidc/authorize', (req, res) => {
 });
 
 app.post('/api/oidc/token', express.urlencoded({ extended: true }), async (req, res) => {
-  console.log(`[OIDC Token] Request from ${req.ip}, Body:`, req.body);
+  console.log(`[OIDC Token] Incoming Request from ${req.ip}`);
   try {
     const formData = new URLSearchParams();
     for (const key in req.body) formData.append(key, req.body[key]);
@@ -105,7 +105,7 @@ app.post('/api/oidc/token', express.urlencoded({ extended: true }), async (req, 
       body: formData.toString()
     });
     const data = await tokenResponse.json();
-    console.log(`[OIDC Token] Response status: ${tokenResponse.status}`);
+    console.log(`[OIDC Token] Status ${tokenResponse.status}, Scopes: ${data.scope || 'none'}`);
     return res.status(tokenResponse.status).json(data);
   } catch (err) {
     console.error("Token Exchange Error:", err);
@@ -127,6 +127,12 @@ app.get('/api/oidc/userinfo', async (req, res) => {
     }
     const userData = await auth0Response.json();
     console.log(`[OIDC UserInfo] Data fetched for: ${userData.email}`);
+    
+    // Ensure nickname or name is mapped to 'username' if AMP requires it
+    if (!userData.username) {
+       userData.username = userData.nickname || userData.name || userData.email.split('@')[0];
+    }
+
     const customRolesNamespace = 'https://larsonserver.ddns.net/roles';
     const auth0Roles = userData[customRolesNamespace] || [];
     
@@ -140,6 +146,7 @@ app.get('/api/oidc/userinfo', async (req, res) => {
        userData.groups.push("Waitlist"); 
     }
     
+    console.log(`[OIDC UserInfo] Final Groups for ${userData.email}:`, userData.groups);
     res.json(userData);
   } catch (error) {
     console.error("UserInfo Proxy Error:", error);
