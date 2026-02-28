@@ -1,20 +1,47 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Layout } from '../components/Layout'
-import { User, Shield, Mail, Key, UserCheck, Monitor as MonitorIcon } from 'lucide-react'
+import { User, Shield, Mail, Key, UserCheck, Monitor as MonitorIcon, Fingerprint, Home } from 'lucide-react'
 import { useAuth0 } from '@auth0/auth0-react'
+import { useNavigate } from 'react-router-dom'
+
+const AUTH0_DOMAIN = import.meta.env.VITE_AUTH0_DOMAIN;
+const AUTH0_CLIENT_ID = import.meta.env.VITE_AUTH0_CLIENT_ID;
+
+// Redirect to Auth0 Universal Login for MFA/passkey enrollment
+function buildAuth0Redirect(acrValues) {
+  const params = new URLSearchParams({
+    response_type: 'code',
+    client_id: AUTH0_CLIENT_ID,
+    redirect_uri: window.location.origin + '/dashboard',
+    scope: 'openid profile email',
+    acr_values: acrValues,
+    prompt: 'login',
+  });
+  return `https://${AUTH0_DOMAIN}/authorize?${params.toString()}`;
+}
 
 export function Profile() {
-  const { user, getAccessTokenSilently } = useAuth0();
+  const { user, getAccessTokenSilently, logout } = useAuth0();
+  const navigate = useNavigate();
   const [userRoles, setUserRoles] = useState([]);
   const [rolesLoading, setRolesLoading] = useState(true);
+
+  // Password reset state
+  const [resetState, setResetState] = useState('idle'); // idle | loading | success | error
+  const [resetError, setResetError] = useState('');
+
+  // Active section for left nav
+  const [activeSection, setActiveSection] = useState('profile');
+  const profileRef = useRef(null);
+  const securityRef = useRef(null);
+
+  const isSocialUser = user?.sub && !user.sub.startsWith('auth0|');
 
   useEffect(() => {
     async function fetchRoles() {
       try {
         const token = await getAccessTokenSilently();
-        const res = await fetch('/api/me', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const res = await fetch('/api/me', { headers: { Authorization: `Bearer ${token}` } });
         if (res.ok) {
           const data = await res.json();
           setUserRoles(data.roles || []);
@@ -30,135 +57,265 @@ export function Profile() {
 
   useEffect(() => { document.title = 'Account | LarsonServer'; }, []);
 
+  // Intersection observer to highlight active nav section
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(e => {
+          if (e.isIntersecting) setActiveSection(e.target.dataset.section);
+        });
+      },
+      { threshold: 0.5 }
+    );
+    if (profileRef.current) observer.observe(profileRef.current);
+    if (securityRef.current) observer.observe(securityRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  const handleResetPassword = async () => {
+    setResetState('loading');
+    setResetError('');
+    try {
+      const token = await getAccessTokenSilently();
+      const res = await fetch('/api/reset-password', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Unknown error');
+      setResetState('success');
+    } catch (err) {
+      setResetError(err.message);
+      setResetState('error');
+    }
+  };
+
+  const navItems = [
+    { id: 'profile', label: 'Profile', icon: User },
+    { id: 'security', label: 'Security', icon: Shield },
+  ];
+
+  const handleNavClick = (id) => {
+    if (id === 'dashboard') { navigate('/dashboard'); return; }
+    const ref = id === 'profile' ? profileRef : securityRef;
+    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setActiveSection(id);
+  };
+
+  const roleBadgeColor = (role) => {
+    if (role === 'admin') return 'bg-electric-blue/10 text-electric-blue border-electric-blue/20';
+    if (role === 'server_manager') return 'bg-cyber-purple/10 text-cyber-purple border-cyber-purple/20';
+    return 'bg-zinc-800 text-zinc-300 border-zinc-700';
+  };
+
   return (
-    <Layout activeItemId="profile">
-      <div className="mb-6 border-b border-zinc-800 pb-4">
-        <h1 className="text-2xl font-bold">Account Management</h1>
-        <p className="text-zinc-500 text-sm mt-1">Review your profile details and security status.</p>
+    <Layout navItems={navItems} activeItemId={activeSection} onNavigate={handleNavClick}>
+      <div className="mb-6 border-b border-zinc-800 pb-4 flex items-end justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Account Management</h1>
+          <p className="text-zinc-500 text-sm mt-1">Review your profile details and security status.</p>
+        </div>
+        <button
+          onClick={() => navigate('/dashboard')}
+          className="flex items-center gap-2 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-md text-sm font-medium transition-colors border border-zinc-700"
+        >
+          <Home size={14} /> Dashboard
+        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-        {/* Profile Card */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="glass-panel hover-glow p-8 rounded-3xl border border-glass-border shadow-xl overflow-hidden relative">
-            <div className="absolute top-0 right-0 p-8 opacity-5">
+
+          {/* ── Profile Card ── */}
+          <div
+            ref={profileRef}
+            data-section="profile"
+            className="glass-panel hover-glow p-8 rounded-3xl border border-glass-border shadow-xl overflow-hidden relative"
+          >
+            <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
               <User size={120} />
             </div>
-            
+
             <div className="flex flex-col md:flex-row items-center gap-8 mb-8 relative z-10">
-              <img 
-                src={user?.picture} 
-                alt={user?.name} 
+              <img
+                src={user?.picture}
+                alt={user?.name}
                 className="w-24 h-24 rounded-full border-2 border-electric-blue shadow-[0_0_20px_rgba(0,240,255,0.2)]"
               />
               <div className="text-center md:text-left">
                 <h2 className="text-3xl font-bold text-white">{user?.nickname || user?.name}</h2>
-                 <div className="flex items-center justify-center md:justify-start gap-2 mt-2">
-                   {rolesLoading ? (
-                     <span className="px-2.5 py-0.5 rounded-full bg-zinc-800 text-zinc-500 text-xs font-medium border border-zinc-700 animate-pulse">Loading roles...</span>
-                   ) : userRoles.length > 0 ? (
-                     userRoles.map(role => (
-                       <span key={role} className="px-2.5 py-0.5 rounded-full bg-electric-blue/10 text-electric-blue text-xs font-semibold border border-electric-blue/20 flex items-center gap-1.5 uppercase tracking-wider drop-shadow-md">
-                         <Shield size={10} /> {role}
-                       </span>
-                     ))
-                   ) : (
-                     <span className="px-2.5 py-0.5 rounded-full bg-zinc-800 text-zinc-400 text-xs font-medium border border-zinc-700 uppercase tracking-wider">
-                       No Assigned Roles
-                     </span>
-                   )}
-                 </div>
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mt-2">
+                  {rolesLoading ? (
+                    <span className="px-2.5 py-0.5 rounded-full bg-zinc-800 text-zinc-500 text-xs font-medium border border-zinc-700 animate-pulse">Loading...</span>
+                  ) : userRoles.length > 0 ? (
+                    userRoles.map(role => (
+                      <span key={role} className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border flex items-center gap-1.5 uppercase tracking-wider drop-shadow-md ${roleBadgeColor(role)}`}>
+                        <Shield size={10} /> {role}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="px-2.5 py-0.5 rounded-full bg-zinc-800 text-zinc-400 text-xs font-medium border border-zinc-700 uppercase tracking-wider">No Assigned Roles</span>
+                  )}
+                </div>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               <div className="bg-zinc-900/50 p-4 rounded-2xl border border-zinc-800/50 hover:bg-zinc-900/80 transition-colors">
-                  <div className="flex items-center gap-2 text-zinc-500 text-xs mb-1">
-                    <Mail size={12} /> Email Address
+              <div className="bg-zinc-900/50 p-4 rounded-2xl border border-zinc-800/50 hover:bg-zinc-900/80 transition-colors">
+                <div className="flex items-center gap-2 text-zinc-500 text-xs mb-1"><Mail size={12} /> Email Address</div>
+                <div className="text-white font-medium">{user?.email}</div>
+                {user?.email_verified && (
+                  <div className="flex items-center gap-1.5 text-electric-blue text-[10px] mt-1 font-semibold uppercase tracking-tighter drop-shadow-md">
+                    <UserCheck size={10} /> Verified Identity
                   </div>
-                  <div className="text-white font-medium">{user?.email}</div>
-                  {user?.email_verified && (
-                    <div className="flex items-center gap-1.5 text-electric-blue text-[10px] mt-1 font-semibold uppercase tracking-tighter drop-shadow-md">
-                      <UserCheck size={10} /> Verified Identity
-                    </div>
-                  )}
-               </div>
-               
-               <div className="bg-zinc-900/50 p-4 rounded-2xl border border-zinc-800/50 hover:bg-zinc-900/80 transition-colors">
-                  <div className="flex items-center gap-2 text-zinc-500 text-xs mb-1">
-                    <MonitorIcon size={12} /> Account Type
-                  </div>
-                  <div className="text-white font-medium uppercase tracking-wider text-xs">
-                    {userRoles.includes('admin') ? 'Staff Administrator' : 'Standard User'}
-                  </div>
-                  <div className="text-zinc-600 text-[10px] mt-1 italic">Provider: {user?.sub?.split('|')[0]}</div>
-               </div>
+                )}
+              </div>
+
+              <div className="bg-zinc-900/50 p-4 rounded-2xl border border-zinc-800/50 hover:bg-zinc-900/80 transition-colors">
+                <div className="flex items-center gap-2 text-zinc-500 text-xs mb-1"><MonitorIcon size={12} /> Account Type</div>
+                <div className="text-white font-medium uppercase tracking-wider text-xs">
+                  {userRoles.includes('admin') ? 'Staff Administrator' : 'Standard User'}
+                </div>
+                <div className="text-zinc-600 text-[10px] mt-1 italic">
+                  Provider: {isSocialUser ? user.sub.split('|')[0] : 'auth0 (password)'}
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="glass-panel p-6 rounded-2xl border border-glass-border hover-glow">
-             <div className="flex items-center justify-between mb-6">
-                <div>
-                   <h3 className="text-lg font-semibold flex items-center gap-2 text-cyber-purple drop-shadow-md">
-                      <Shield size={20} /> Security & Identity
-                   </h3>
-                   <p className="text-zinc-400 text-xs mt-1">Manage your credentials and authentication methods.</p>
-                </div>
-                <div className="px-3 py-1 rounded-full bg-cyber-purple/10 border border-cyber-purple/20 text-[10px] font-bold text-cyber-purple drop-shadow-md uppercase tracking-tighter">
-                   Secured by Auth0
-                </div>
-             </div>
+          {/* ── Security & Identity ── */}
+          <div
+            ref={securityRef}
+            data-section="security"
+            className="glass-panel p-6 rounded-2xl border border-glass-border hover-glow"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-lg font-semibold flex items-center gap-2 text-cyber-purple drop-shadow-md">
+                  <Shield size={20} /> Security & Identity
+                </h3>
+                <p className="text-zinc-400 text-xs mt-1">Manage your credentials and authentication methods.</p>
+              </div>
+              <div className="px-3 py-1 rounded-full bg-cyber-purple/10 border border-cyber-purple/20 text-[10px] font-bold text-cyber-purple drop-shadow-md uppercase tracking-tighter">
+                Secured by Auth0
+              </div>
+            </div>
 
-             <div className="space-y-4">
-                <div className="flex flex-col sm:flex-row items-center justify-between p-4 bg-zinc-900/50 rounded-xl border border-zinc-800/50 hover:border-zinc-700 transition-colors gap-4">
-                   <div className="flex items-center gap-4 w-full sm:w-auto">
-                      <div className="w-10 h-10 rounded-full bg-zinc-800 flex flex-shrink-0 items-center justify-center text-zinc-400">
-                         <Key size={18} />
-                      </div>
-                      <div>
-                         <p className="text-sm font-semibold text-white">Account Password</p>
-                         <p className="text-[10px] text-zinc-500">Update your account password via email</p>
-                      </div>
-                   </div>
-                   <button 
-                      onClick={() => window.location.href = `https://${import.meta.env.VITE_AUTH0_DOMAIN}/u/reset-password?client_id=${import.meta.env.VITE_AUTH0_CLIENT_ID}`}
-                      className="w-full sm:w-auto px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg text-xs font-medium border border-zinc-700 transition-colors whitespace-nowrap"
-                   >
-                      Reset Password
-                   </button>
-                </div>
+            <div className="space-y-4">
 
-                <div className="p-4 bg-zinc-900/50 rounded-xl border border-zinc-800/50 hover:border-zinc-700 transition-colors">
-                   <div className="flex items-start gap-4">
-                      <div className="w-10 h-10 rounded-full bg-electric-blue/10 flex flex-shrink-0 items-center justify-center text-electric-blue drop-shadow-[0_0_8px_rgba(0,240,255,0.4)]">
-                         <Shield size={18} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                         <p className="text-sm font-semibold text-white">Multi-Factor Authentication (MFA)</p>
-                         <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                            To enable MFA, please log out and choose the "Security Settings" or "Enable MFA" option during your next login attempt, or contact the cluster admin to force enrollment.
-                         </p>
-                         <div className="mt-3 flex items-center gap-2">
-                             <div className="h-1.5 w-1.5 rounded-full bg-electric-blue animate-pulse drop-shadow-[0_0_4px_rgba(0,240,255,0.8)]" />
-                             <span className="text-[10px] text-zinc-400 uppercase font-bold tracking-widest break-words">Active Protection Available</span>
-                         </div>
-                      </div>
-                   </div>
+              {/* Password Reset */}
+              <div className="flex flex-col sm:flex-row items-center justify-between p-4 bg-zinc-900/50 rounded-xl border border-zinc-800/50 hover:border-zinc-700 transition-colors gap-4">
+                <div className="flex items-center gap-4 w-full sm:w-auto">
+                  <div className={`w-10 h-10 rounded-full flex flex-shrink-0 items-center justify-center ${isSocialUser ? 'bg-zinc-800 text-zinc-600' : 'bg-zinc-800 text-zinc-400'}`}>
+                    <Key size={18} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-white">Account Password</p>
+                    <p className="text-[10px] text-zinc-500">
+                      {isSocialUser
+                        ? `Managed by ${user.sub.split('|')[0]} — no password to reset`
+                        : resetState === 'success'
+                          ? '✓ Reset email sent — check your inbox'
+                          : 'Send a fresh password reset link to your email'}
+                    </p>
+                    {resetState === 'error' && <p className="text-[10px] text-red-400 mt-0.5">{resetError}</p>}
+                  </div>
                 </div>
-             </div>
+                <button
+                  onClick={handleResetPassword}
+                  disabled={isSocialUser || resetState === 'loading' || resetState === 'success'}
+                  className={`w-full sm:w-auto px-4 py-2 rounded-lg text-xs font-medium border transition-colors whitespace-nowrap
+                    ${isSocialUser || resetState === 'success'
+                      ? 'bg-zinc-800/50 border-zinc-700/50 text-zinc-600 cursor-not-allowed'
+                      : resetState === 'loading'
+                        ? 'bg-zinc-700 border-zinc-600 text-zinc-400 cursor-wait'
+                        : 'bg-zinc-800 hover:bg-zinc-700 text-white border-zinc-700'
+                    }`}
+                >
+                  {resetState === 'loading' ? 'Sending...' : resetState === 'success' ? 'Email Sent ✓' : 'Send Reset Email'}
+                </button>
+              </div>
+
+              {/* MFA */}
+              <div className="flex flex-col sm:flex-row items-center justify-between p-4 bg-zinc-900/50 rounded-xl border border-zinc-800/50 hover:border-zinc-700 transition-colors gap-4">
+                <div className="flex items-center gap-4 w-full sm:w-auto">
+                  <div className="w-10 h-10 rounded-full bg-electric-blue/10 flex flex-shrink-0 items-center justify-center text-electric-blue drop-shadow-[0_0_8px_rgba(0,240,255,0.4)]">
+                    <Shield size={18} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-white">Multi-Factor Authentication (MFA)</p>
+                    <p className="text-[10px] text-zinc-500">Enroll or manage your OTP app, SMS, or other second factors.</p>
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <div className="h-1.5 w-1.5 rounded-full bg-electric-blue animate-pulse drop-shadow-[0_0_4px_rgba(0,240,255,0.8)]" />
+                      <span className="text-[10px] text-zinc-400 uppercase font-bold tracking-widest">Active Protection Available</span>
+                    </div>
+                  </div>
+                </div>
+                <a
+                  href={buildAuth0Redirect('http://schemas.openid.net/pape/policies/2007/06/multi-factor')}
+                  className="w-full sm:w-auto px-4 py-2 bg-electric-blue/10 hover:bg-electric-blue/20 text-electric-blue rounded-lg text-xs font-medium border border-electric-blue/20 transition-colors whitespace-nowrap text-center"
+                >
+                  Manage MFA
+                </a>
+              </div>
+
+              {/* Passkeys */}
+              <div className="flex flex-col sm:flex-row items-center justify-between p-4 bg-zinc-900/50 rounded-xl border border-zinc-800/50 hover:border-zinc-700 transition-colors gap-4">
+                <div className="flex items-center gap-4 w-full sm:w-auto">
+                  <div className="w-10 h-10 rounded-full bg-cyber-purple/10 flex flex-shrink-0 items-center justify-center text-cyber-purple drop-shadow-[0_0_8px_rgba(176,38,255,0.4)]">
+                    <Fingerprint size={18} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-white">Passkeys</p>
+                    <p className="text-[10px] text-zinc-500">Add a biometric or hardware security key for passwordless login.</p>
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <div className="h-1.5 w-1.5 rounded-full bg-cyber-purple drop-shadow-[0_0_4px_rgba(176,38,255,0.8)]" />
+                      <span className="text-[10px] text-zinc-400 uppercase font-bold tracking-widest">WebAuthn / FIDO2</span>
+                    </div>
+                  </div>
+                </div>
+                <a
+                  href={buildAuth0Redirect('https://schemas.openid.net/pape/policies/2007/06/webauthn')}
+                  className="w-full sm:w-auto px-4 py-2 bg-cyber-purple/10 hover:bg-cyber-purple/20 text-cyber-purple rounded-lg text-xs font-medium border border-cyber-purple/20 transition-colors whitespace-nowrap text-center"
+                >
+                  Manage Passkeys
+                </a>
+              </div>
+
+            </div>
           </div>
         </div>
 
-        {/* Info Sidebar */}
+        {/* ── Sidebar ── */}
         <div className="space-y-6">
-           <div className="glass-panel p-6 rounded-2xl border border-glass-border hover-glow">
-              <h4 className="font-semibold text-cyber-purple mb-2 flex items-center gap-2 drop-shadow-md">
-                 <Shield size={16} /> Access Control
-              </h4>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                 Your roles determine which server clusters and management panels you can view. If you believe your roles are incorrect, contact the system administrator.
-              </p>
-           </div>
+          <div className="glass-panel p-6 rounded-2xl border border-glass-border hover-glow">
+            <h4 className="font-semibold text-cyber-purple mb-2 flex items-center gap-2 drop-shadow-md">
+              <Shield size={16} /> Access Control
+            </h4>
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              Your roles determine which server clusters and management panels you can view. If you believe your roles are incorrect, contact the system administrator.
+            </p>
+          </div>
+
+          <div className="glass-panel p-6 rounded-2xl border border-glass-border hover-glow">
+            <h4 className="font-semibold text-zinc-300 mb-3 flex items-center gap-2">
+              <Key size={16} /> Linked Identities
+            </h4>
+            <div className="space-y-2">
+              <div className="flex items-center gap-3 p-3 bg-zinc-900/50 rounded-xl border border-zinc-800/50">
+                <div className="w-8 h-8 rounded-full overflow-hidden border border-zinc-700">
+                  <img src={user?.picture} alt="" className="w-full h-full object-cover" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-white truncate">{user?.email}</p>
+                  <p className="text-[10px] text-zinc-500 capitalize">
+                    {isSocialUser ? user.sub.split('|')[0].replace(/-/g, ' ') : 'Username & Password'}
+                  </p>
+                </div>
+                <div className="text-[10px] text-emerald-400 font-semibold bg-emerald-400/10 px-2 py-0.5 rounded-full border border-emerald-400/20">Primary</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </Layout>

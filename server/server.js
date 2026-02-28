@@ -180,6 +180,39 @@ app.get('/api/system', requireAuth, (req, res) => {
   });
 });
 
+// ── Password Reset ────────────────────────────────────────────────────────────
+// Triggers a fresh reset email via Auth0 dbconnections API (fixes stale link issue)
+app.post('/api/reset-password', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.sub;
+    // Only database connection users have passwords
+    if (!userId.startsWith('auth0|')) {
+      return res.status(400).json({ error: 'Social login accounts do not have a password to reset.' });
+    }
+    const user = await management.users.get({ id: userId });
+    const email = user.data.email;
+    const response = await fetch(`https://${AUTH0_DOMAIN}/dbconnections/change_password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        client_id: AUTH0_CLIENT_ID,
+        email,
+        connection: 'Username-Password-Authentication',
+      }),
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      console.error('[reset-password] Auth0 error:', text);
+      return res.status(500).json({ error: 'Failed to send reset email.' });
+    }
+    console.log(`[reset-password] Reset email sent for ${email}`);
+    res.json({ message: 'Password reset email sent.' });
+  } catch (err) {
+    console.error('[reset-password] Error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── /api/me ───────────────────────────────────────────────────────────────────
 app.get('/api/me', requireAuth, async (req, res) => {
   try {
