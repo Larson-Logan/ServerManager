@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Layout } from '../components/Layout'
+import { SystemMetrics } from '../components/SystemMetrics'
 import { BookOpen, Map, MessageSquare, Compass, Rocket, Server, Shield } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth0 } from '@auth0/auth0-react'
@@ -10,11 +11,13 @@ export function Dashboard() {
   
   const { getAccessTokenSilently } = useAuth0();
   const [userRoles, setUserRoles] = useState([]);
+  const [accessToken, setAccessToken] = useState(null);
 
   useEffect(() => {
     async function fetchRoles() {
       try {
         const token = await getAccessTokenSilently();
+        setAccessToken(token);
         const res = await fetch('/api/me', { headers: { Authorization: `Bearer ${token}` } });
         if (res.ok) {
           const data = await res.json();
@@ -83,30 +86,37 @@ export function Dashboard() {
       </div>
 
       {activeTab === 'hub' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-          <a href="#" className="glass-panel p-6 rounded-2xl hover-glow group cursor-pointer block">
-            <div className="h-10 w-10 rounded-xl bg-electric-blue/10 flex items-center justify-center mb-4 group-hover:bg-electric-blue/20 transition-all border border-electric-blue/20 shadow-[0_0_15px_rgba(0,240,255,0.1)]">
-              <BookOpen size={20} className="text-electric-blue group-hover:drop-shadow-[0_0_8px_rgba(0,240,255,0.8)] transition-all" />
-            </div>
-            <h3 className="font-semibold text-white mb-2 group-hover:text-electric-blue transition-colors">Documentation</h3>
-            <p className="text-sm text-zinc-400">Read the documentation and learn how to use the platform.</p>
-          </a>
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <a href="#" className="glass-panel p-6 rounded-2xl hover-glow group cursor-pointer block">
+              <div className="h-10 w-10 rounded-xl bg-electric-blue/10 flex items-center justify-center mb-4 group-hover:bg-electric-blue/20 transition-all border border-electric-blue/20 shadow-[0_0_15px_rgba(0,240,255,0.1)]">
+                <BookOpen size={20} className="text-electric-blue group-hover:drop-shadow-[0_0_8px_rgba(0,240,255,0.8)] transition-all" />
+              </div>
+              <h3 className="font-semibold text-white mb-2 group-hover:text-electric-blue transition-colors">Documentation</h3>
+              <p className="text-sm text-zinc-400">Read the documentation and learn how to use the platform.</p>
+            </a>
 
-          <a href="#" className="glass-panel p-6 rounded-2xl hover-glow group cursor-pointer block">
-            <div className="h-10 w-10 rounded-xl bg-cyber-purple/10 flex items-center justify-center mb-4 group-hover:bg-cyber-purple/20 transition-all border border-cyber-purple/20 shadow-[0_0_15px_rgba(176,38,255,0.1)]">
-              <Map size={20} className="text-cyber-purple group-hover:drop-shadow-[0_0_8px_rgba(176,38,255,0.8)] transition-all" />
-            </div>
-            <h3 className="font-semibold text-white mb-2 group-hover:text-cyber-purple transition-colors">Roadmap</h3>
-            <p className="text-sm text-zinc-400">View upcoming features and track our development progress.</p>
-          </a>
+            <a href="#" className="glass-panel p-6 rounded-2xl hover-glow group cursor-pointer block">
+              <div className="h-10 w-10 rounded-xl bg-cyber-purple/10 flex items-center justify-center mb-4 group-hover:bg-cyber-purple/20 transition-all border border-cyber-purple/20 shadow-[0_0_15px_rgba(176,38,255,0.1)]">
+                <Map size={20} className="text-cyber-purple group-hover:drop-shadow-[0_0_8px_rgba(176,38,255,0.8)] transition-all" />
+              </div>
+              <h3 className="font-semibold text-white mb-2 group-hover:text-cyber-purple transition-colors">Roadmap</h3>
+              <p className="text-sm text-zinc-400">View upcoming features and track our development progress.</p>
+            </a>
 
-          <a href="#" className="glass-panel p-6 rounded-2xl hover-glow group cursor-pointer block">
-            <div className="h-10 w-10 rounded-xl bg-zinc-800/80 flex items-center justify-center mb-4 group-hover:bg-zinc-700 transition-all border border-zinc-700">
-              <MessageSquare size={20} className="text-zinc-300" />
-            </div>
-            <h3 className="font-semibold text-white mb-2">Community Forum</h3>
-            <p className="text-sm text-zinc-400">Join the discussion and connect with other users.</p>
-          </a>
+            <a href="#" className="glass-panel p-6 rounded-2xl hover-glow group cursor-pointer block">
+              <div className="h-10 w-10 rounded-xl bg-zinc-800/80 flex items-center justify-center mb-4 group-hover:bg-zinc-700 transition-all border border-zinc-700">
+                <MessageSquare size={20} className="text-zinc-300" />
+              </div>
+              <h3 className="font-semibold text-white mb-2">Community Forum</h3>
+              <p className="text-sm text-zinc-400">Join the discussion and connect with other users.</p>
+            </a>
+          </div>
+
+          {/* Live Server Metrics — visible to admins & server managers */}
+          {isServerManager && accessToken && (
+            <SystemMetrics token={accessToken} />
+          )}
         </div>
       ) : (
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
