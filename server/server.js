@@ -199,6 +199,7 @@ app.get('/api/users', requireAuth, requireAdmin, async (req, res) => {
         emailAddresses: [{ id: 'primary', emailAddress: u.email }],
         primaryEmailAddressId: 'primary',
         imageUrl: u.picture,
+        username: u.user_metadata?.username || u.nickname || u.email.split('@')[0],
         publicMetadata: {
            roles: u.app_metadata?.roles || [] 
         }

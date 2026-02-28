@@ -279,7 +279,7 @@ export function AdminDashboard() {
                     <table className="w-full text-left text-sm text-zinc-400">
                       <thead className="bg-zinc-900/50 text-zinc-300">
                         <tr>
-                          <th className="px-6 py-4 font-medium border-b border-zinc-800">Email</th>
+                          <th className="px-6 py-4 font-medium border-b border-zinc-800">User / Username</th>
                           <th className="px-6 py-4 font-medium border-b border-zinc-800">Requested On</th>
                           <th className="px-6 py-4 font-medium border-b border-zinc-800 text-right">Actions</th>
                         </tr>
@@ -288,7 +288,10 @@ export function AdminDashboard() {
                         {requests.map((req) => (
                           <tr key={req.id} className="border-b border-zinc-800/50 hover:bg-white/5 transition-colors">
                             <td className="px-6 py-4 flex flex-col">
-                               <span className="font-medium text-white">{req.firstName}</span>
+                               <div className="flex items-center gap-2">
+                                 <span className="font-medium text-white">{req.firstName} {req.lastName}</span>
+                                 <span className="text-[10px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded border border-zinc-700">@{req.username}</span>
+                               </div>
                                <span className="text-[10px] text-zinc-500">{req.emailAddress}</span>
                             </td>
                             <td className="px-6 py-4 text-zinc-400">
@@ -351,7 +354,10 @@ export function AdminDashboard() {
                               <td className="px-6 py-4 flex items-center gap-3">
                                  <img src={u.imageUrl} alt="Avatar" className="w-8 h-8 rounded-full border border-zinc-700" />
                                  <div>
-                                   <div className="font-medium text-white">{u.firstName} {u.lastName}</div>
+                                   <div className="font-medium text-white flex items-center gap-2">
+                                     {u.firstName} {u.lastName}
+                                     <span className="text-[10px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded border border-zinc-700">@{u.username}</span>
+                                   </div>
                                    <div className="text-xs text-zinc-500">{primaryEmail}</div>
                                  </div>
                               </td>
