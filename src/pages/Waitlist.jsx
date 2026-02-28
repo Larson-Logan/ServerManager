@@ -1,17 +1,10 @@
-import React, { useEffect } from 'react'
+import React from 'react'
 import { Layout } from '../components/Layout'
 import { Clock, Mail, ShieldAlert } from 'lucide-react'
 import { useAuth0 } from '@auth0/auth0-react'
 
 export function Waitlist() {
   const { user, logout } = useAuth0();
-
-  // DEBUG LOGGING THE JWT PAYLOAD
-  useEffect(() => {
-    if (user) {
-      console.log("WAITLIST HIT - RAW USER TOKEN:", user);
-    }
-  }, [user]);
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white font-sans flex items-center justify-center p-6">

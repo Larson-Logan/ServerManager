@@ -1,18 +1,12 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Github, Twitter, Mail, ExternalLink, TerminalSquare, Check, X, Send } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useAuth0 } from '@auth0/auth0-react'
 
 export function PublicView() {
-  const { user, isAuthenticated } = useAuth0();
+  const { isAuthenticated } = useAuth0();
 
-  // DEBUGGING AUTH0 PAYLOAD
-  useEffect(() => {
-    if (isAuthenticated) {
-       console.log("RAW AUTH0 USER OBJECT:", user);
-    }
-  }, [user, isAuthenticated]);
   const [copied, setCopied] = useState(false);
   
   const handleCopyEmail = async (e) => {
