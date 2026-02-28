@@ -1,5 +1,5 @@
-import React from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import React, { useEffect, useState } from 'react'
+import { BrowserRouter, Routes, Route, Navigate, useSearchParams } from 'react-router-dom'
 import { useAuth0 } from '@auth0/auth0-react'
 
 // Page Components
@@ -8,6 +8,51 @@ import { AdminDashboard } from './pages/AdminDashboard'
 import { Dashboard } from './pages/Dashboard'
 import { Waitlist } from './pages/Waitlist'
 import { Profile } from './pages/Profile'
+
+// Error Handler Component
+function AuthErrorHandler({ children }) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [errorMsg, setErrorMsg] = useState('');
+
+  useEffect(() => {
+    const error = searchParams.get('error');
+    const errorDescription = searchParams.get('error_description');
+    
+    if (error === 'access_denied' && errorDescription) {
+      setErrorMsg(decodeURIComponent(errorDescription));
+      // Clean up the URL
+      searchParams.delete('error');
+      searchParams.delete('error_description');
+      searchParams.delete('state');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
+  return (
+    <>
+      {errorMsg && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="glass-panel max-w-md w-full p-6 sm:p-8 rounded-2xl flex flex-col items-center text-center border-red-500/20 bg-zinc-900/80">
+            <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mb-6 border border-red-500/20">
+              <svg className="w-8 h-8 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-bold text-white mb-2">Access Denied</h2>
+            <p className="text-zinc-400 mb-8">{errorMsg}</p>
+            <button 
+              onClick={() => setErrorMsg('')}
+              className="w-full py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-medium transition-colors"
+            >
+              Acknowledge
+            </button>
+          </div>
+        </div>
+      )}
+      {children}
+    </>
+  );
+}
 
 // Custom RBAC Guard Route
 function RoleRoute({ children, allowedRole, fallbackPath }) {
@@ -69,14 +114,15 @@ function App() {
 
   return (
     <BrowserRouter>
-      <Routes>
-        {/* Public Homepage / Link Hub */}
-        <Route 
-          path="/" 
-          element={
-            isAuthenticated ? <Navigate to="/dashboard" replace /> : <PublicView />
-          } 
-        />
+      <AuthErrorHandler>
+        <Routes>
+          {/* Public Homepage / Link Hub */}
+          <Route 
+            path="/" 
+            element={
+              isAuthenticated ? <Navigate to="/dashboard" replace /> : <PublicView />
+            } 
+          />
 
         {/* Global Login Route */}
         <Route 
@@ -124,6 +170,7 @@ function App() {
         {/* Catch-all 404 redirect */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </AuthErrorHandler>
     </BrowserRouter>
   )
 }
