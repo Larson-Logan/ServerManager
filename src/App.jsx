@@ -38,7 +38,7 @@ function RoleRoute({ children, allowedRole, fallbackPath }) {
 }
 
 // Protected Route Wrapper
-function ProtectedRoute({ children }) {
+function ProtectedRoute({ children, allowWaitlist = false }) {
   const { user, isAuthenticated, isLoading, loginWithRedirect } = useAuth0();
 
   if (isLoading) return <div>Loading...</div>;
@@ -50,8 +50,8 @@ function ProtectedRoute({ children }) {
   const userRoles = user?.['https://larsonserver.ddns.net/roles'] || [];
   console.log('User Roles (ProtectedRoute):', userRoles);
 
-  // Strictly block waitlisted users from the dashboard
-  if (userRoles.includes('waitlist')) {
+  // Strictly block waitlisted users from the dashboard, UNLESS they are specifically allowed (like on the waitlist page itself)
+  if (userRoles.includes('waitlist') && !allowWaitlist) {
     return <Navigate to="/waitlist" replace />;
   }
 
@@ -85,7 +85,7 @@ function App() {
         />
 
         {/* Waitlist Page */}
-        <Route path="/waitlist" element={<ProtectedRoute><Waitlist /></ProtectedRoute>} />
+        <Route path="/waitlist" element={<ProtectedRoute allowWaitlist={true}><Waitlist /></ProtectedRoute>} />
 
         {/* Protected Admin Panel (Requires 'admin' role) */}
         <Route 
