@@ -293,6 +293,8 @@ app.post('/api/deny-request', requireAuth, requireAdmin, async (req, res) => {
 // Delete a provisioned user
 app.delete('/api/users/:id', requireAuth, requireAdmin, async (req, res) => {
   const { id } = req.params;
+  console.log(`[DELETE] Request to delete user: ${id}`);
+  
   if (!id) return res.status(400).json({ error: 'User ID required' });
 
   try {

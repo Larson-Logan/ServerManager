@@ -156,7 +156,8 @@ export function AdminDashboard() {
     
     try {
       const token = await getToken();
-      const res = await fetch(`/api/users/${userId}`, {
+      // Important: Use encodeURIComponent because Auth0 IDs contain pipes (|)
+      const res = await fetch(`/api/users/${encodeURIComponent(userId)}`, {
         method: 'DELETE',
         headers: { 
           'Authorization': `Bearer ${token}` 
@@ -166,12 +167,12 @@ export function AdminDashboard() {
       if (res.ok) {
         setUsers(users.filter(u => u.id !== userId));
       } else {
-        const err = await res.json();
+        const err = await res.json().catch(() => ({ error: 'Non-JSON response from server' }));
         alert(`Error deleting user: ${err.error || 'Unknown error'}`);
       }
     } catch (err) {
-      console.error(err);
-      alert('Failed to delete user.');
+      console.error('Delete User Failure:', err);
+      alert(`Failed to delete user: ${err.message || 'Network error'}`);
     }
   };
 
