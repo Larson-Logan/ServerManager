@@ -138,13 +138,15 @@ app.get('/api/oidc/userinfo', async (req, res) => {
 
     const customRolesNamespace = 'https://larsonserver.ddns.net/roles';
     const auth0Roles = userData[customRolesNamespace] || [];
+    console.log(`[OIDC UserInfo] Raw Auth0 Roles for ${userData.email}:`, auth0Roles);
     
-    // AMP expects "groups" to be an array of strings
+    // AMP expects "groups" to be an array of strings. 
+    // We send multiple variations to ensure AMP matches one.
     userData.groups = [];
     if (auth0Roles.includes('admin')) {
        userData.groups.push("AMP_SuperAdmin", "AMP_Super Admins");
     } else if (auth0Roles.includes('manager') || auth0Roles.includes('instancemgr')) {
-       userData.groups.push("AMP_Instance Manager", "AMP_Instance Managers");
+       userData.groups.push("AMP_Instance Manager", "AMP_Instance Managers", "AMP_InstanceManager", "AMP_InstanceMgr");
     } else if (auth0Roles.includes('user')) {
        userData.groups.push("Users");
     } else {
