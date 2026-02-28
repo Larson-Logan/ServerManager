@@ -32,7 +32,7 @@
   box-shadow: 0 0 20px rgba(0, 240, 255, 0.1), inset 0 0 10px rgba(0, 240, 255, 0.05);
 }
 
-/* Animated Cyber Background */
+/* Premium Inverse Vignette Background */
 .cyber-bg {
   position: fixed;
   top: 0;
@@ -43,40 +43,13 @@
   overflow: hidden;
   background-color: #050505;
   pointer-events: none;
-}
-
-.cyber-blob {
-  position: absolute;
-  filter: blur(80px);
-  opacity: 0.15;
-  border-radius: 50%;
-  animation: float 20s infinite ease-in-out alternate;
-}
-
-.cyber-blob-1 {
-  background: var(--color-electric-blue);
-  width: 50vw;
-  height: 50vw;
-  top: -20%;
-  left: -10%;
-  animation-duration: 25s;
-}
-
-.cyber-blob-2 {
-  background: var(--color-cyber-purple);
-  width: 40vw;
-  height: 40vw;
-  bottom: -10%;
-  right: -5%;
-  animation-duration: 30s;
-  animation-direction: alternate-reverse;
-}
-
-@keyframes float {
-  0% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(5%, 10%) scale(1.1); }
-  66% { transform: translate(-5%, 5%) scale(0.9); }
-  100% { transform: translate(0, -5%) scale(1); }
+  background-image: 
+    radial-gradient(circle at 0% 0%, rgba(0, 240, 255, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 100% 100%, rgba(176, 38, 255, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 100% 0%, rgba(0, 240, 255, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 0% 100%, rgba(176, 38, 255, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at center, transparent 20%, #050505 100%);
+  background-attachment: fixed;
 }
 
 /* Sidebar glow indicator */

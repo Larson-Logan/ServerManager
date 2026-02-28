@@ -88,10 +88,7 @@ export function Layout({ children, navItems = [], activeItemId, onNavigate }) {
 
   return (
     <>
-      <div className="cyber-bg">
-        <div className="cyber-blob cyber-blob-1"></div>
-        <div className="cyber-blob cyber-blob-2"></div>
-      </div>
+      <div className="cyber-bg"></div>
       
       <div className="flex h-[100dvh] w-full text-white font-sans bg-transparent relative z-10">
 
