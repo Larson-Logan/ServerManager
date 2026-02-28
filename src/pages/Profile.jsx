@@ -144,15 +144,16 @@ export function Profile() {
     finally { setDeletingId(null); }
   };
 
-  const mfaTypeLabel = (type) => ({
+  const mfaTypeLabel = (method) => ({
     'totp': 'Authenticator App (TOTP)',
     'sms': 'SMS',
     'email': 'Email OTP',
-    'guardian': 'Auth0 Guardian',
+    'push-notification': 'Auth0 Guardian Push',
+    'duo': 'Duo Security',
     'recovery-code': 'Recovery Codes',
     'webauthn-roaming': 'Security Key (Passkey)',
     'webauthn-platform': 'Device Biometrics (Passkey)',
-  })[type] || type;
+  })[method] || method || 'Unknown';
 
   const navItems = [
     { id: 'profile', label: 'Profile', icon: User },
@@ -331,10 +332,10 @@ export function Profile() {
                     {authenticators.map(auth => (
                       <div key={auth.id} className="flex items-center justify-between pl-14 pr-1 py-2 rounded-lg bg-zinc-900/80 border border-zinc-800/50 group">
                         <div>
-                          <p className="text-xs font-medium text-white">{mfaTypeLabel(auth.type)}</p>
-                          {auth.name && <p className="text-[10px] text-zinc-500">{auth.name}</p>}
+                          <p className="text-xs font-medium text-white">{mfaTypeLabel(auth.auth_method)}</p>
+                          {auth.friendly_name && <p className="text-[10px] text-zinc-500">{auth.friendly_name}</p>}
                           <p className="text-[10px] text-zinc-600">
-                            {auth.confirmed ? '✓ Confirmed' : '⚠ Not confirmed'}
+                            {auth.confirmed ? '✓ Confirmed' : '⚠ Not confirmed'}{auth.enrolled_at ? ` · ${new Date(auth.enrolled_at).toLocaleDateString()}` : ''}
                           </p>
                         </div>
                         <button
