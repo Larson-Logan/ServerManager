@@ -213,6 +213,20 @@ app.post('/api/reset-password', requireAuth, async (req, res) => {
   }
 });
 
+// ── MFA Enrollment Ticket ─────────────────────────────────────────────────────
+// Uses Management API to create a direct Guardian enrollment URL (no auth flow needed)
+app.post('/api/mfa-enrollment', requireAuth, async (req, res) => {
+  try {
+    const ticket = await management.guardian.createEnrollmentTicket({
+      user_id: req.user.sub,
+    });
+    res.json({ url: ticket.data.ticket_url });
+  } catch (err) {
+    console.error('[mfa-enrollment] Error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── /api/me ───────────────────────────────────────────────────────────────────
 app.get('/api/me', requireAuth, async (req, res) => {
   try {

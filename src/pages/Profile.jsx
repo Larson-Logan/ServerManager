@@ -12,13 +12,15 @@ function buildAuth0Redirect(acrValues) {
   const params = new URLSearchParams({
     response_type: 'code',
     client_id: AUTH0_CLIENT_ID,
-    redirect_uri: window.location.origin, // must match registered Auth0 callback URL
+    redirect_uri: window.location.origin,
     scope: 'openid profile email',
     acr_values: acrValues,
+    max_age: '0',
     prompt: 'login',
   });
   return `https://${AUTH0_DOMAIN}/authorize?${params.toString()}`;
 }
+
 
 export function Profile() {
   const { user, getAccessTokenSilently } = useAuth0();
@@ -29,6 +31,7 @@ export function Profile() {
   // Password reset state
   const [resetState, setResetState] = useState('idle'); // idle | loading | success | error
   const [resetError, setResetError] = useState('');
+  const [mfaLoading, setMfaLoading] = useState(false);
 
   // Active section for left nav
   const [activeSection, setActiveSection] = useState('profile');
@@ -87,6 +90,25 @@ export function Profile() {
     } catch (err) {
       setResetError(err.message);
       setResetState('error');
+    }
+  };
+
+  const handleMfaEnroll = async () => {
+    setMfaLoading(true);
+    try {
+      const token = await getAccessTokenSilently();
+      const res = await fetch('/api/mfa-enrollment', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+      else throw new Error(data.error || 'No enrollment URL returned');
+    } catch (err) {
+      console.error('[MFA enroll]', err);
+      alert('Could not start MFA enrollment: ' + err.message);
+    } finally {
+      setMfaLoading(false);
     }
   };
 
@@ -251,12 +273,14 @@ export function Profile() {
                     </div>
                   </div>
                 </div>
-                <a
-                  href={buildAuth0Redirect('http://schemas.openid.net/pape/policies/2007/06/multi-factor')}
-                  className="w-full sm:w-auto px-4 py-2 bg-electric-blue/10 hover:bg-electric-blue/20 text-electric-blue rounded-lg text-xs font-medium border border-electric-blue/20 transition-colors whitespace-nowrap text-center"
+                <button
+                  onClick={handleMfaEnroll}
+                  disabled={mfaLoading}
+                  className={`w-full sm:w-auto px-4 py-2 rounded-lg text-xs font-medium border transition-colors whitespace-nowrap text-center
+                    ${mfaLoading ? 'bg-zinc-700 border-zinc-600 text-zinc-400 cursor-wait' : 'bg-electric-blue/10 hover:bg-electric-blue/20 text-electric-blue border-electric-blue/20'}`}
                 >
-                  Manage MFA
-                </a>
+                  {mfaLoading ? 'Opening...' : 'Manage MFA'}
+                </button>
               </div>
 
               {/* Passkeys */}
