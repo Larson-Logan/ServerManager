@@ -40,33 +40,29 @@ export function Dashboard() {
     { id: 'explore', label: 'Explore', icon: Compass }
   ];
 
-  if (isServerManager) {
-    navItems.push({ id: 'external-amp', label: 'Manage Server', icon: Server });
-  }
-
   if (userRoles.includes('admin')) {
     navItems.push({ id: 'admin-panel', label: 'Admin Panel', icon: Shield });
   }
 
-  const handleNavClick = async (id) => {
-    if (id === 'external-amp') {
-      try {
-        const token = await getAccessTokenSilently();
-        const res = await fetch('/api/amp-launch', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (res.ok) {
-          window.open('https://manage.larsonserver.ddns.net', '_blank');
-        } else {
-          console.error('Failed to get launch token from server');
-          alert('Could not launch server manager. Please check your permissions.');
-        }
-      } catch (err) {
-        console.error('Launch request failed:', err);
+  const handleAMPLaunch = async () => {
+    try {
+      const token = await getAccessTokenSilently();
+      const res = await fetch('/api/amp-launch', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        window.open('https://manage.larsonserver.ddns.net', '_blank');
+      } else {
+        console.error('Failed to get launch token from server');
+        alert('Could not launch server manager. Please check your permissions.');
       }
-      return;
+    } catch (err) {
+      console.error('Launch request failed:', err);
     }
+  };
+
+  const handleNavClick = async (id) => {
     if (id === 'admin-panel') {
       navigate('/admin');
       return;
@@ -114,6 +110,19 @@ export function Dashboard() {
       ) : (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {isServerManager && (
+              <div 
+                onClick={handleAMPLaunch}
+                className="glass-panel p-6 rounded-2xl hover-glow group cursor-pointer block border-electric-blue/10 hover:border-electric-blue/30"
+              >
+                <div className="h-10 w-10 rounded-xl bg-electric-blue/10 flex items-center justify-center mb-4 group-hover:bg-electric-blue/20 transition-all border border-electric-blue/20 shadow-[0_0_15px_rgba(0,240,255,0.1)]">
+                  <Server size={20} className="text-electric-blue group-hover:drop-shadow-[0_0_8px_rgba(0,240,255,0.8)] transition-all" />
+                </div>
+                <h3 className="font-semibold text-white mb-2 group-hover:text-electric-blue transition-colors">Manage Server</h3>
+                <p className="text-sm text-zinc-400">Access the AMP console to manage game instances and files.</p>
+              </div>
+            )}
+
             <a href="https://foundry.larsonserver.ddns.net" target="_blank" rel="noopener noreferrer" className="glass-panel p-6 rounded-2xl hover-glow group cursor-pointer block border-orange-500/10 hover:border-orange-500/30">
               <div className="h-10 w-10 rounded-xl bg-orange-500/10 flex items-center justify-center mb-4 group-hover:bg-orange-500/20 transition-all border border-orange-500/20 shadow-[0_0_15px_rgba(249,115,22,0.1)]">
                 <Dices size={20} className="text-orange-500 group-hover:drop-shadow-[0_0_8px_rgba(249,115,22,0.8)] transition-all" />
