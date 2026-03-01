@@ -263,7 +263,8 @@ app.get('/api/admin/stats', requireAuth, requireAdmin, async (req, res) => {
     const logs = await management.logs.getAll({
         q: 'type:"s" AND date:[now-90d TO *]', // Successful logins in last 90 days
         per_page: 100,
-        sort: 'date:-1'
+        sort: 'date:-1',
+        headers: { 'X-Auth0-Search-Query-Syntax': 'v3' }
     });
 
     const heatmap = {};
@@ -356,9 +357,13 @@ app.get('/api/admin/permissions', requireAuth, requireAdmin, async (req, res) =>
     // Find the resource server (API) matching our audience
     const servers = await management.resourceServers.getAll();
     const server = servers.data.find(s => s.identifier === process.env.AUTH0_AUDIENCE);
-    if (!server) return res.status(404).json({ error: 'API Resource Server not found' });
+    if (!server) {
+      console.error(`[AdminPermissions] API Resource Server not found for: ${process.env.AUTH0_AUDIENCE}`);
+      return res.status(404).json({ error: 'API Resource Server not found' });
+    }
     res.json(server.scopes || []);
   } catch (err) {
+    console.error('[AdminPermissions] Error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
