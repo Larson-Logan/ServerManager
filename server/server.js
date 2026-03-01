@@ -274,12 +274,88 @@ app.get('/api/admin/roles', requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
-app.post('/api/admin/roles', requireAuth, requireAdmin, async (req, res) => {
+app.post('/api/admin/roles/seed', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const defaults = [
+      { name: 'admin', description: 'Full system access' },
+      { name: 'server_manager', description: 'Manage game server instances' },
+      { name: 'user', description: 'Standard authenticated user' }
+    ];
+    
+    const existing = await management.roles.getAll();
+    const existingNames = existing.data.map(r => r.name.toLowerCase());
+    
+    const results = [];
+    for (const role of defaults) {
+      if (!existingNames.includes(role.name)) {
+        await management.roles.create(role);
+        logAuditAction(req.user.email, 'SEED_ROLE', role.name);
+        results.push(`Created ${role.name}`);
+      } else {
+        results.push(`Skipped ${role.name} (exists)`);
+      }
+    }
+    res.json({ message: 'Seed complete', results });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.patch('/api/admin/roles/:id', requireAuth, requireAdmin, async (req, res) => {
   try {
     const { name, description } = req.body;
-    await management.roles.create({ name, description });
-    logAuditAction(req.user.email, 'CREATE_ROLE', name, { description });
-    res.json({ message: 'Role created' });
+    const oldRole = await management.roles.get({ id: req.params.id });
+    await management.roles.update({ id: req.params.id }, { name, description });
+    logAuditAction(req.user.email, 'UPDATE_ROLE_METADATA', oldRole.data.name, { 
+      from: { name: oldRole.data.name, description: oldRole.data.description },
+      to: { name, description }
+    });
+    res.json({ message: 'Role updated' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Admin: RBAC / Permissions ────────────────────────────────────────────────
+app.get('/api/admin/permissions', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    // Find the resource server (API) matching our audience
+    const servers = await management.resourceServers.getAll();
+    const server = servers.data.find(s => s.identifier === process.env.AUTH0_AUDIENCE);
+    if (!server) return res.status(404).json({ error: 'API Resource Server not found' });
+    res.json(server.scopes || []);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/admin/roles/:id/permissions', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const perms = await management.roles.getPermissions({ id: req.params.id });
+    res.json(perms.data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/admin/roles/:id/permissions', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { permissions, action } = req.body; // action: 'associate' or 'remove'
+    const identifier = process.env.AUTH0_AUDIENCE;
+    
+    const formatted = permissions.map(p => ({
+      resource_server_identifier: identifier,
+      permission_name: p
+    }));
+
+    if (action === 'remove') {
+      await management.roles.removePermissions({ id: req.params.id }, { permissions: formatted });
+      logAuditAction(req.user.email, 'REMOVE_PERMISSIONS', req.params.id, { permissions });
+    } else {
+      await management.roles.addPermissions({ id: req.params.id }, { permissions: formatted });
+      logAuditAction(req.user.email, 'ADD_PERMISSIONS', req.params.id, { permissions });
+    }
+    res.json({ message: 'Permissions updated' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
