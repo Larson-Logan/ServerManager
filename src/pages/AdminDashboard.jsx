@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { Layout } from '../components/Layout'
 import { SystemMetrics } from '../components/SystemMetrics'
-import { Check, X, Clock, Mail, Activity, Users, Monitor as MonitorIcon, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Check, X, Clock, Mail, Activity, Users, Monitor as MonitorIcon, ChevronLeft, ChevronRight, Shield, Globe, History, Plus, AlertCircle, RefreshCw } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useAuth0 } from '@auth0/auth0-react'
 
@@ -120,6 +120,94 @@ const CustomRoleSelect = ({ user, currentRoles, isAdmin, onRoleChange, isOpen, o
   );
 };
 
+// ── Activity Heatmap Component ───────────────────────────────────────────────
+const ActivityHeatmap = ({ data = {} }) => {
+  const days = 91; // 13 weeks
+  const today = new Date();
+  const cells = [];
+
+  for (let i = days; i >= 0; i--) {
+     const date = new Date(today);
+     date.setDate(today.getDate() - i);
+     const dateStr = date.toISOString().split('T')[0];
+     const count = data[dateStr] || 0;
+     
+     // Determine color based on intensity
+     let color = 'bg-zinc-800/50';
+     if (count > 0 && count < 3) color = 'bg-cyber-purple/20';
+     else if (count >= 3 && count < 6) color = 'bg-cyber-purple/50';
+     else if (count >= 6) color = 'bg-cyber-purple';
+     
+     cells.push({ date: dateStr, count, color });
+  }
+
+  return (
+    <div className="glass-panel p-6 border border-glass-border rounded-2xl">
+      <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+        <Activity size={14} className="text-cyber-purple" /> User Activity (90 Days)
+      </h3>
+      <div className="flex flex-wrap gap-1.5 justify-center">
+        {cells.map((cell, idx) => (
+          <div 
+            key={idx}
+            title={`${cell.date}: ${cell.count} events`}
+            className={`w-3 h-3 rounded-sm ${cell.color} transition-all hover:scale-125 cursor-help`}
+          />
+        ))}
+      </div>
+      <div className="mt-4 flex items-center justify-between text-[10px] text-zinc-500">
+        <span>{cells[0]?.date}</span>
+        <div className="flex items-center gap-2">
+           <span>Less</span>
+           <div className="flex gap-1">
+              <div className="w-2 h-2 rounded-sm bg-zinc-800/50" />
+              <div className="w-2 h-2 rounded-sm bg-cyber-purple/20" />
+              <div className="w-2 h-2 rounded-sm bg-cyber-purple/50" />
+              <div className="w-2 h-2 rounded-sm bg-cyber-purple" />
+           </div>
+           <span>More</span>
+        </div>
+        <span>Today</span>
+      </div>
+    </div>
+  );
+};
+
+// ── Service Health Component ─────────────────────────────────────────────────
+const ServiceHealth = ({ services = [], onRefresh }) => {
+  return (
+    <div className="glass-panel p-6 border border-glass-border rounded-2xl">
+       <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+             <Globe size={14} className="text-electric-blue" /> Service Health
+          </h3>
+          <button 
+            onClick={onRefresh}
+            className="p-1 hover:bg-white/5 rounded transition-colors text-zinc-500 hover:text-white"
+          >
+             <RefreshCw size={14} />
+          </button>
+       </div>
+       <div className="space-y-3">
+          {services.map(s => (
+            <div key={s.name} className="flex items-center justify-between group">
+               <div className="flex items-center gap-3">
+                  <div className={`w-2 h-2 rounded-full ${s.online ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]'}`} />
+                  <span className="text-sm font-medium text-zinc-300 group-hover:text-white transition-colors">{s.name}</span>
+               </div>
+               <div className="text-[10px] font-mono text-zinc-500">
+                  {s.latency ? `${s.latency}ms` : s.online ? 'Online' : 'Offline'}
+               </div>
+            </div>
+          ))}
+          {services.length === 0 && (
+             <div className="text-xs text-zinc-500 italic text-center py-2">Polling services...</div>
+          )}
+       </div>
+    </div>
+  );
+};
+
 export function AdminDashboard() {
   useEffect(() => { document.title = 'Admin Panel | LarsonServer'; }, []);
 
@@ -133,7 +221,9 @@ export function AdminDashboard() {
   
   const navItems = [
     { id: 'metrics', label: 'System Metrics', icon: Activity },
-    { id: 'users', label: 'User Management', icon: Users },
+    { id: 'users', label: 'Users', icon: Users },
+    { id: 'roles', label: 'Roles', icon: Shield },
+    { id: 'audit', label: 'Audit Log', icon: History },
     { id: 'external-amp', label: 'CubeCoders AMP', icon: MonitorIcon }
   ];
 
@@ -167,6 +257,68 @@ export function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [openDropdownUserId, setOpenDropdownUserId] = useState(null);
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [serviceStatus, setServiceStatus] = useState([]);
+  const [heatmapData, setHeatmapData] = useState({});
+  const [availableRolesList, setAvailableRolesList] = useState([]);
+
+  const fetchExtendedData = useCallback(async () => {
+    try {
+      const token = await getToken();
+      
+      // Fetch Audit Logs
+      const auditRes = await fetch('/api/admin/audit-log', { headers: { Authorization: `Bearer ${token}` } });
+      if (auditRes.ok) setAuditLogs(await auditRes.json());
+
+      // Fetch Service Status
+      const statusRes = await fetch('/api/admin/status', { headers: { Authorization: `Bearer ${token}` } });
+      if (statusRes.ok) setServiceStatus(await statusRes.json());
+
+      // Fetch Stats for Heatmap
+      const statsRes = await fetch('/api/admin/stats', { headers: { Authorization: `Bearer ${token}` } });
+      if (statsRes.ok) {
+         const data = await statsRes.json();
+         setHeatmapData(data.heatmap || {});
+      }
+
+      // Fetch All Available Roles
+      const rolesRes = await fetch('/api/admin/roles', { headers: { Authorization: `Bearer ${token}` } });
+      if (rolesRes.ok) setAvailableRolesList(await rolesRes.json());
+
+    } catch (err) {
+      console.error('[ExtendedDataFetch] Error:', err);
+    }
+  }, [getToken]);
+
+  useEffect(() => {
+     if (activeTab === 'metrics' || activeTab === 'audit' || activeTab === 'roles') {
+        fetchExtendedData();
+     }
+  }, [activeTab, fetchExtendedData]);
+
+  const handleCreateRole = async (e) => {
+    e.preventDefault();
+    const name = e.target.roleName.value;
+    const description = e.target.roleDesc.value;
+    
+    try {
+      const token = await getToken();
+      const res = await fetch('/api/admin/roles', {
+        method: 'POST',
+        headers: { 
+           'Content-Type': 'application/json',
+           'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ name, description })
+      });
+      if (res.ok) {
+         e.target.reset();
+         fetchExtendedData();
+      }
+    } catch (err) {
+      console.error('Role create failed:', err);
+    }
+  };
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -310,13 +462,107 @@ export function AdminDashboard() {
 
       {activeTab === 'metrics' ? (
         <div className="mb-10 animate-in fade-in slide-in-from-bottom-2 duration-300">
-          {accessToken ? (
-            <SystemMetrics token={accessToken} />
-          ) : (
-            <div className="text-zinc-500 text-sm animate-pulse">Loading metrics...</div>
-          )}
+          <>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+               <ActivityHeatmap data={heatmapData} />
+               <ServiceHealth services={serviceStatus} onRefresh={fetchExtendedData} />
+            </div>
+            <SystemMetrics accessToken={accessToken} />
+          </>
         </div>
-      ) : (
+      ) : activeTab === 'roles' ? (
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Create Role Form */}
+              <div className="md:col-span-1">
+                 <div className="glass-panel p-6 border border-glass-border rounded-2xl sticky top-6">
+                    <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                       <Plus size={16} className="text-electric-blue" /> Create New Role
+                    </h3>
+                    <form onSubmit={handleCreateRole} className="space-y-4">
+                       <div>
+                          <label className="block text-[10px] uppercase tracking-wider text-zinc-500 mb-1 ml-1">Role Name</label>
+                          <input name="roleName" required placeholder="e.g. Moderator" className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-electric-blue/50 transition-colors" />
+                       </div>
+                       <div>
+                          <label className="block text-[10px] uppercase tracking-wider text-zinc-500 mb-1 ml-1">Description</label>
+                          <textarea name="roleDesc" placeholder="What can this role do?" rows={3} className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-electric-blue/50 transition-colors" />
+                       </div>
+                       <button type="submit" className="w-full py-2 bg-electric-blue/10 hover:bg-electric-blue/20 text-electric-blue border border-electric-blue/30 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2">
+                          Create Role
+                       </button>
+                    </form>
+                 </div>
+              </div>
+
+              {/* Role List */}
+              <div className="md:col-span-2 space-y-4">
+                 <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+                    <Shield size={14} className="text-cyber-purple" /> Existing System Roles
+                 </h3>
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {availableRolesList.map(role => (
+                       <div key={role.id} className="glass-panel p-4 border border-glass-border rounded-2xl hover-glow cursor-default transition-all">
+                          <div className="flex items-center justify-between mb-2">
+                             <span className="text-sm font-bold text-white">{role.name}</span>
+                             <Shield size={14} className="text-zinc-500" />
+                          </div>
+                          <p className="text-xs text-zinc-500 line-clamp-2">{role.description || 'No description provided.'}</p>
+                       </div>
+                    ))}
+                    {availableRolesList.length === 0 && <div className="col-span-full py-12 text-center text-zinc-500 italic">No custom roles found.</div>}
+                 </div>
+              </div>
+           </div>
+        </div>
+      ) : activeTab === 'audit' ? (
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+           <div className="glass-panel border border-glass-border rounded-2xl shadow-xl overflow-hidden">
+              <table className="w-full text-left text-sm text-zinc-400">
+                 <thead className="bg-zinc-900/50 text-zinc-300 border-b border-zinc-800">
+                    <tr>
+                       <th className="px-6 py-4 font-medium">Time</th>
+                       <th className="px-6 py-4 font-medium">Admin</th>
+                       <th className="px-6 py-4 font-medium">Action</th>
+                       <th className="px-6 py-4 font-medium text-right">Target</th>
+                    </tr>
+                 </thead>
+                 <tbody className="divide-y divide-zinc-800/30">
+                    {auditLogs.map((entry, idx) => (
+                       <tr key={idx} className="hover:bg-white/[0.02] transition-colors">
+                          <td className="px-6 py-4 whitespace-nowrap text-xs text-zinc-500">
+                             {new Date(entry.timestamp).toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4">
+                             <div className="flex items-center gap-2">
+                                <div className="w-5 h-5 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-[10px] text-zinc-300">
+                                   {entry.actor?.charAt(0).toUpperCase() || 'A'}
+                                </div>
+                                <span className="text-zinc-300">{entry.actor}</span>
+                             </div>
+                          </td>
+                          <td className="px-6 py-4">
+                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                                entry.action.includes('DELETE') ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                                entry.action.includes('CREATE') ? 'bg-green-500/10 text-green-400 border-green-500/20' :
+                                'bg-electric-blue/10 text-electric-blue border-electric-blue/20'
+                             }`}>
+                                {entry.action}
+                             </span>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                             <code className="text-[10px] bg-zinc-900 px-1.5 py-0.5 rounded text-zinc-400 border border-zinc-800">{entry.target}</code>
+                          </td>
+                       </tr>
+                    ))}
+                    {auditLogs.length === 0 && (
+                       <tr><td colSpan={4} className="px-6 py-12 text-center text-zinc-500 italic">No audit trail recorded yet.</td></tr>
+                    )}
+                 </tbody>
+              </table>
+           </div>
+        </div>
+      ) : ( // This 'else' now corresponds to activeTab === 'users'
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div className="flex items-center gap-4">

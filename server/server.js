@@ -16,6 +16,7 @@ const morgan = require('morgan');
 const helmet = require('helmet');
 const os = require('os');
 const { execSync } = require('child_process');
+const fs = require('fs');
 
 const VERSION = '3.0';
 console.log(`>>> AUTH0 PROXY v${VERSION} STARTING - Domain: ${process.env.AUTH0_DOMAIN || 'UNDEFINED'} <<<`);
@@ -151,6 +152,30 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// ── Audit Log Helper ─────────────────────────────────────────────────────────
+const AUDIT_LOG_FILE = path.join(__dirname, 'audit_log.json');
+
+async function logAuditAction(actorEmail, action, target, details = {}) {
+  try {
+    let logs = [];
+    if (fs.existsSync(AUDIT_LOG_FILE)) {
+      const raw = fs.readFileSync(AUDIT_LOG_FILE, 'utf8');
+      logs = JSON.parse(raw);
+    }
+    const newEntry = {
+      timestamp: new Date().toISOString(),
+      actor: actorEmail,
+      action,
+      target,
+      details,
+    };
+    logs.unshift(newEntry);
+    fs.writeFileSync(AUDIT_LOG_FILE, JSON.stringify(logs.slice(0, 500), null, 2));
+  } catch (err) {
+    console.error('[AuditLog] Failed to write log:', err.message);
+  }
+}
+
 // ── System Metrics Endpoint ───────────────────────────────────────────────────
 app.get('/api/system', requireAuth, (req, res) => {
   const totalMem = os.totalmem();
@@ -178,6 +203,86 @@ app.get('/api/system', requireAuth, (req, res) => {
     pm2: getPm2Processes(),
     timestamp: new Date().toISOString(),
   });
+});
+
+// ── Admin: Service Status ────────────────────────────────────────────────────
+app.get('/api/admin/status', requireAuth, requireAdmin, async (req, res) => {
+  const services = [
+    { name: 'Identity (Auth0)', url: `https://${AUTH0_DOMAIN}/.well-known/openid-configuration` },
+    { name: 'Game Server (AMP)', url: 'https://manage.larsonserver.ddns.net' },
+    { name: 'VTT (Foundry)', url: 'https://foundry.larsonserver.ddns.net' }
+  ];
+
+  const results = await Promise.all(services.map(async (s) => {
+    try {
+      const start = Date.now();
+      const response = await fetch(s.url, { method: 'HEAD', signal: AbortSignal.timeout(5000) });
+      return { 
+        name: s.name, 
+        online: response.ok || response.status < 500, 
+        latency: Date.now() - start 
+      };
+    } catch (err) {
+      return { name: s.name, online: false, latency: null };
+    }
+  }));
+
+  res.json(results);
+});
+
+// ── Admin: Stats (Heatmap) ───────────────────────────────────────────────────
+app.get('/api/admin/stats', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    // Fetch logs from Auth0 Management API
+    const logs = await management.logs.getAll({
+        q: 'type:"s" AND date:[now-90d TO *]', // Successful logins in last 90 days
+        per_page: 100,
+        sort: 'date:-1'
+    });
+
+    const heatmap = {};
+    logs.data.forEach(log => {
+        const date = log.date.split('T')[0];
+        heatmap[date] = (heatmap[date] || 0) + 1;
+    });
+
+    res.json({ heatmap });
+  } catch (err) {
+    console.error('[AdminStats] Error:', err.message);
+    res.status(500).json({ error: 'Failed to fetch analytics' });
+  }
+});
+
+// ── Admin: Audit Log ─────────────────────────────────────────────────────────
+app.get('/api/admin/audit-log', requireAuth, requireAdmin, (req, res) => {
+  try {
+    if (!fs.existsSync(AUDIT_LOG_FILE)) return res.json([]);
+    const logs = JSON.parse(fs.readFileSync(AUDIT_LOG_FILE, 'utf8'));
+    res.json(logs);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to read audit log' });
+  }
+});
+
+// ── Admin: Role Management ────────────────────────────────────────────────────
+app.get('/api/admin/roles', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const roles = await management.roles.getAll();
+    res.json(roles.data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/admin/roles', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { name, description } = req.body;
+    await management.roles.create({ name, description });
+    logAuditAction(req.user.email, 'CREATE_ROLE', name, { description });
+    res.json({ message: 'Role created' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ── Password Reset ────────────────────────────────────────────────────────────
@@ -238,8 +343,8 @@ app.get('/api/authenticators', requireAuth, async (req, res) => {
     if (guardianRes.data) {
       combined.push(...guardianRes.data.map(e => ({ ...e, factor_type: 'guardian' })));
     }
-  } catch (err) {
-    console.warn('[authenticators] Guardian fetch failed:', err.message);
+  } catch {
+    console.warn('[authenticators] Guardian fetch failed');
     // Continue anyway
   }
 
@@ -257,8 +362,8 @@ app.get('/api/authenticators', requireAuth, async (req, res) => {
         ...m
       })));
     }
-  } catch (err) {
-    console.warn('[authenticators] WebAuthn fetch failed:', err.message);
+  } catch {
+    console.warn('[authenticators] WebAuthn fetch failed');
     // If BOTH fail, and WebAuthn was the one that hit "Insufficient scope", 
     // we want the user to know why.
     if (combined.length === 0) {
@@ -454,7 +559,13 @@ app.get('/api/users', requireAuth, requireAdmin, async (req, res) => {
 
 app.post('/api/users/:id/roles', requireAuth, requireAdmin, async (req, res) => {
   try {
+    const oldUser = await management.users.get({ id: req.params.id });
+    const oldRoles = oldUser.data.app_metadata?.roles || [];
     await management.users.update({ id: req.params.id }, { app_metadata: { roles: req.body.roles } });
+    logAuditAction(req.user.email, 'UPDATE_ROLES', oldUser.data.email, { 
+      from: oldRoles, 
+      to: req.body.roles 
+    });
     res.json({ message: 'Roles updated' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -483,6 +594,7 @@ app.post('/api/approve-request', requireAuth, requireAdmin, async (req, res) => 
     roles = roles.filter(r => r !== 'waitlist');
     if (!roles.includes('user')) roles.push('user');
     await management.users.update({ id: req.body.id }, { app_metadata: { roles } });
+    logAuditAction(req.user.email, 'APPROVE_USER', user.data.email);
     res.json({ message: 'User approved' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -503,6 +615,7 @@ app.delete('/api/users/:id', requireAuth, requireAdmin, async (req, res) => {
   if (!id) return res.status(400).json({ error: 'User ID required' });
   try {
     await management.users.delete({ id });
+    logAuditAction(req.user.email, 'DELETE_USER', id);
     console.log(`[DELETE] Removed user ${id}`);
     res.json({ message: 'User deleted successfully' });
   } catch (error) {
