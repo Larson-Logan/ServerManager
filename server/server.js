@@ -33,18 +33,18 @@ app.use(morgan('combined'));
 // ── Rate Limiting ────────────────────────────────────────────────────────────
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,
+  max: 2000, // Increased from 100 to handle dashboard polling
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Too many requests, please try again later.' },
+  message: { error: 'Rate limit exceeded. Please wait a moment.' },
 });
 
 const oidcLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: 200, // Increased from 20
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Too many OIDC requests, please slow down.' },
+  message: { error: 'Too many login attempts. Please try again later.' },
 });
 
 app.use('/api/', globalLimiter);
@@ -79,6 +79,27 @@ function getKey(header, callback) {
   });
 }
 
+// ── Role Caching ─────────────────────────────────────────────────────────────
+const roleCache = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+async function getLiveRoles(userId) {
+  const cached = roleCache.get(userId);
+  if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
+    return cached.roles;
+  }
+
+  try {
+    const liveUser = await management.users.get({ id: userId });
+    const roles = liveUser.data.app_metadata?.roles || [];
+    roleCache.set(userId, { roles, timestamp: Date.now() });
+    return roles;
+  } catch (err) {
+    console.error(`[getLiveRoles] Error for ${userId}:`, err.message);
+    return cached ? cached.roles : []; // Fallback to stale cache if API fails
+  }
+}
+
 const requireAuth = (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -101,14 +122,13 @@ const requireAuth = (req, res, next) => {
 
 const requireAdmin = async (req, res, next) => {
   try {
-    const liveUser = await management.users.get({ id: req.user.sub });
-    const roles = liveUser.data.app_metadata?.roles || [];
+    const roles = await getLiveRoles(req.user.sub);
     if (!roles.includes('admin')) {
       return res.status(403).json({ error: 'Forbidden: Admin access only' });
     }
     next();
   } catch (err) {
-    console.error('[requireAdmin] Failed to verify live roles:', err.message);
+    console.error('[requireAdmin] Verification error:', err.message);
     return res.status(403).json({ error: 'Forbidden: Could not verify admin role' });
   }
 };
@@ -585,14 +605,13 @@ app.get('/api/oidc/userinfo', async (req, res) => {
     userData.username = cleanUsername;
     userData.preferred_username = cleanUsername;
 
-    // Live role lookup via Management API
+    // Live role lookup via Cached Helper
     let auth0Roles = [];
     try {
-      const liveUser = await management.users.get({ id: userData.sub });
-      const liveRoles = liveUser.data.app_metadata?.roles || [];
-      auth0Roles = (Array.isArray(liveRoles) ? liveRoles : [liveRoles]).map(r => String(r).toLowerCase());
+      auth0Roles = await getLiveRoles(userData.sub);
+      auth0Roles = auth0Roles.map(r => String(r).toLowerCase());
     } catch (mgmtErr) {
-      console.error('[OIDC UserInfo] Management API fallback:', mgmtErr.message);
+      console.error('[OIDC UserInfo] Role fetch failed:', mgmtErr.message);
       const customRolesNamespace = 'https://larsonserver.ddns.net/roles';
       const rawRoles = userData[customRolesNamespace] || userData.roles || [];
       auth0Roles = (Array.isArray(rawRoles) ? rawRoles : [rawRoles]).map(r => String(r).toLowerCase());
@@ -609,7 +628,7 @@ app.get('/api/oidc/userinfo', async (req, res) => {
       userData.groups.push('Waitlist');
     }
 
-    console.log(`[OIDC UserInfo] ${userData.email} → groups:`, userData.groups);
+    console.log(`[OIDC UserInfo] ${userData.email} → roles:`, auth0Roles, '→ groups:', userData.groups);
     res.json(userData);
   } catch (error) {
     console.error('[OIDC UserInfo] Error:', error);
@@ -647,6 +666,7 @@ app.post('/api/users/:id/roles', requireAuth, requireAdmin, async (req, res) => 
     const oldUser = await management.users.get({ id: req.params.id });
     const oldRoles = oldUser.data.app_metadata?.roles || [];
     await management.users.update({ id: req.params.id }, { app_metadata: { roles: req.body.roles } });
+    roleCache.delete(req.params.id); // Invalidate cache on update
     logAuditAction(req.user.email, 'UPDATE_ROLES', oldUser.data.email, { 
       from: oldRoles, 
       to: req.body.roles 
@@ -679,6 +699,7 @@ app.post('/api/approve-request', requireAuth, requireAdmin, async (req, res) => 
     roles = roles.filter(r => r !== 'waitlist');
     if (!roles.includes('user')) roles.push('user');
     await management.users.update({ id: req.body.id }, { app_metadata: { roles } });
+    roleCache.delete(req.body.id); // Invalidate cache
     logAuditAction(req.user.email, 'APPROVE_USER', user.data.email);
     res.json({ message: 'User approved' });
   } catch (error) {
