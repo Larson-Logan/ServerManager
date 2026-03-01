@@ -264,7 +264,6 @@ export function AdminDashboard() {
   const [editingRole, setEditingRole] = useState(null);
   const [rolePermissions, setRolePermissions] = useState([]);
   const [availablePermissions, setAvailablePermissions] = useState([]);
-  const [syncing, setSyncing] = useState(false);
 
   const fetchExtendedData = useCallback(async () => {
     try {
@@ -298,28 +297,6 @@ export function AdminDashboard() {
     }
   }, [getToken]);
 
-  const handleSyncDefaults = async () => {
-    setSyncing(true);
-    try {
-      const token = await getToken();
-      const res = await fetch('/api/admin/roles/seed', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (res.ok) {
-        alert('Sync complete: ' + data.results.join(', '));
-        fetchExtendedData();
-      } else {
-        alert('Sync failed: ' + (data.error || 'Unknown error') + '\n\nTIP: Check your Auth0 Management API Application permissions for create:roles scope.');
-      }
-    } catch (err) {
-      console.error('Sync failed:', err);
-      alert('Network error during sync.');
-    } finally {
-      setSyncing(false);
-    }
-  };
 
   const handleEditRole = async (role) => {
     setEditingRole(role);
