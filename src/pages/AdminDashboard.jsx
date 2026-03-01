@@ -467,7 +467,7 @@ export function AdminDashboard() {
                <ActivityHeatmap data={heatmapData} />
                <ServiceHealth services={serviceStatus} onRefresh={fetchExtendedData} />
             </div>
-            <SystemMetrics accessToken={accessToken} />
+            <SystemMetrics token={accessToken} />
           </>
         </div>
       ) : activeTab === 'roles' ? (

@@ -222,7 +222,7 @@ app.get('/api/admin/status', requireAuth, requireAdmin, async (req, res) => {
         online: response.ok || response.status < 500, 
         latency: Date.now() - start 
       };
-    } catch (err) {
+    } catch {
       return { name: s.name, online: false, latency: null };
     }
   }));
@@ -259,7 +259,7 @@ app.get('/api/admin/audit-log', requireAuth, requireAdmin, (req, res) => {
     if (!fs.existsSync(AUDIT_LOG_FILE)) return res.json([]);
     const logs = JSON.parse(fs.readFileSync(AUDIT_LOG_FILE, 'utf8'));
     res.json(logs);
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: 'Failed to read audit log' });
   }
 });
