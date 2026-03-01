@@ -325,6 +325,7 @@ app.post('/api/amp-launch', requireAuth, (req, res) => {
     httpOnly: true,
     sameSite: 'lax',
     secure: true,
+    domain: '.larsonserver.ddns.net',
   });
   res.json({ success: true });
 });
