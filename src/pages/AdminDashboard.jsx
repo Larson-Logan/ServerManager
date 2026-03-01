@@ -415,7 +415,7 @@ export function AdminDashboard() {
                     No registered users yet.
                  </div>
                ) : (
-                  <div className="glass-panel border border-glass-border rounded-2xl shadow-xl overflow-visible flex flex-col min-h-[300px]">
+                  <div className="glass-panel border border-glass-border rounded-2xl shadow-xl overflow-visible flex flex-col">
                     <div className="overflow-x-auto">
                       <table className="w-full min-w-[560px] text-left text-sm text-zinc-400">
                         <thead>
@@ -435,7 +435,7 @@ export function AdminDashboard() {
                             const isOpen = openDropdownUserId === u.id;
                           
                             return (
-                              <tr key={u.id} className={`border-b border-zinc-800/50 hover:bg-white/5 transition-colors relative ${isOpen ? 'z-50' : 'z-0'}`}>
+                              <tr key={u.id} className="border-b border-zinc-800/50 hover:bg-white/5 transition-colors">
                                 <td className="px-6 py-4 flex items-center gap-3">
                                    <img src={u.imageUrl} alt="Avatar" className="w-8 h-8 rounded-full border border-zinc-700" />
                                    <div>
