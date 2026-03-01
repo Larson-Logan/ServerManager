@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { Layout } from '../components/Layout'
 import { SystemMetrics } from '../components/SystemMetrics'
 import { Check, X, Clock, Mail, Activity, Users, Monitor as MonitorIcon, ChevronLeft, ChevronRight } from 'lucide-react'
@@ -8,6 +9,7 @@ import { useAuth0 } from '@auth0/auth0-react'
 // Custom Animated Multi-Select Component
 const CustomRoleSelect = ({ user, currentRoles, isAdmin, onRoleChange, isOpen, onToggle }) => {
   const dropdownRef = useRef(null);
+  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
   
   // Prevent locking yourself out
   const isDisabled = isAdmin && user.id === 'user_2taX1gW3wH1zXF8z5D4W7d7z8b8';
@@ -17,6 +19,17 @@ const CustomRoleSelect = ({ user, currentRoles, isAdmin, onRoleChange, isOpen, o
     { id: 'server_manager', label: 'Server Mngr', color: 'text-cyber-purple', bg: 'bg-cyber-purple/20' },
     { id: 'admin', label: 'Admin', color: 'text-electric-blue', bg: 'bg-electric-blue/20' }
   ];
+
+  useEffect(() => {
+    if (isOpen && dropdownRef.current) {
+      const rect = dropdownRef.current.getBoundingClientRect();
+      setCoords({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
+        width: rect.width
+      });
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -67,20 +80,28 @@ const CustomRoleSelect = ({ user, currentRoles, isAdmin, onRoleChange, isOpen, o
         <svg className={`w-4 h-4 text-zinc-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
       </button>
 
-      {isOpen && (
-        <div className="absolute top-full left-0 mt-2 w-48 bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl z-50 p-2 animate-in fade-in slide-in-from-top-2 duration-200">
+      {isOpen && createPortal(
+        <div 
+          style={{ 
+            position: 'absolute', 
+            top: coords.top + 8,
+            left: coords.left,
+            width: 192,
+            zIndex: 9999
+          }}
+          className="bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl p-2 animate-in fade-in slide-in-from-top-2 duration-200"
+        >
           {availableRoles.map(role => {
             const hasRole = currentRoles.includes(role.id);
             return (
               <label 
                 key={role.id} 
                 onMouseDown={(e) => {
-                  // Prevent the click-away listener from firing before our onClick
                   e.stopPropagation();
                 }}
                 onClick={(e) => { 
-                  e.preventDefault(); // Prevents double-firing if a nested element triggers it
-                  e.stopPropagation(); // Prevents the click from bubbling
+                  e.preventDefault();
+                  e.stopPropagation();
                   toggleRole(role.id); 
                 }}
                 className="flex items-center gap-3 p-2 hover:bg-zinc-800 rounded-lg cursor-pointer transition-colors group"
@@ -92,7 +113,8 @@ const CustomRoleSelect = ({ user, currentRoles, isAdmin, onRoleChange, isOpen, o
               </label>
             );
           })}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
