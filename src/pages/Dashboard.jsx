@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Layout } from '../components/Layout'
-import { BookOpen, Map, MessageSquare, Compass, Rocket, Server, Shield } from 'lucide-react'
+import { BookOpen, Map, MessageSquare, Compass, Rocket, Server, Shield, Dices } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth0 } from '@auth0/auth0-react'
 
@@ -112,12 +112,16 @@ export function Dashboard() {
 
         </div>
       ) : (
-        <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-           {/* Placeholder for future explore sections */}
-           <div className="text-zinc-500 text-sm italic glass-panel p-8 text-center rounded-2xl flex flex-col items-center">
-             <Compass className="opacity-20 mb-3" size={32} />
-             More applications coming soon.
-           </div>
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <a href="https://foundry.larsonserver.ddns.net" target="_blank" rel="noopener noreferrer" className="glass-panel p-6 rounded-2xl hover-glow group cursor-pointer block border-orange-500/10 hover:border-orange-500/30">
+              <div className="h-10 w-10 rounded-xl bg-orange-500/10 flex items-center justify-center mb-4 group-hover:bg-orange-500/20 transition-all border border-orange-500/20 shadow-[0_0_15px_rgba(249,115,22,0.1)]">
+                <Dices size={20} className="text-orange-500 group-hover:drop-shadow-[0_0_8px_rgba(249,115,22,0.8)] transition-all" />
+              </div>
+              <h3 className="font-semibold text-white mb-2 group-hover:text-orange-500 transition-colors">Foundry VTT</h3>
+              <p className="text-sm text-zinc-400">Launch Foundry Virtual Tabletop for your roleplaying campaigns.</p>
+            </a>
+          </div>
         </div>
       )}
     </Layout>
