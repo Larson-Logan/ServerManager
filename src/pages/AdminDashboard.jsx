@@ -45,7 +45,7 @@ const CustomRoleSelect = ({ user, currentRoles, isAdmin, onRoleChange }) => {
   };
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className={`relative ${isOpen ? 'z-50' : 'z-auto'}`} ref={dropdownRef}>
       <button 
         onClick={() => !isDisabled && setIsOpen(!isOpen)}
         className={`px-3 py-1.5 rounded-lg text-xs font-semibold border flex items-center gap-2 transition-all ${isDisabled ? 'opacity-50 cursor-not-allowed border-zinc-700 bg-zinc-800/50 text-zinc-400' : 'border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-white shadow-sm'}`}
@@ -334,8 +334,9 @@ export function AdminDashboard() {
                     Waitlist is clear.
                  </div>
                ) : (
-                 <div className="glass-panel border border-glass-border rounded-2xl shadow-xl overflow-x-auto">
-                    <table className="w-full min-w-[560px] text-left text-sm text-zinc-400">
+                  <div className="glass-panel border border-glass-border rounded-2xl shadow-xl overflow-visible">
+                    <div className="overflow-x-auto">
+                      <table className="w-full min-w-[560px] text-left text-sm text-zinc-400">
                       <thead className="bg-zinc-900/50 text-zinc-300">
                         <tr>
                           <th className="px-6 py-4 font-medium border-b border-zinc-800">User / Username</th>
@@ -375,8 +376,9 @@ export function AdminDashboard() {
                           </tr>
                         ))}
                       </tbody>
-                    </table>
-                 </div>
+                      </table>
+                    </div>
+                  </div>
                )}
             </div>
 
@@ -391,58 +393,59 @@ export function AdminDashboard() {
                     No registered users yet.
                  </div>
                ) : (
-                 <div className="glass-panel border border-glass-border rounded-2xl shadow-xl overflow-x-auto flex flex-col">
-                    <table className="w-full min-w-[560px] text-left text-sm text-zinc-400">
-                      <thead className="bg-zinc-900/50 text-zinc-300">
-                        <tr>
-                          <th className="px-6 py-4 font-medium border-b border-zinc-800">User / Email</th>
-                          <th className="px-6 py-4 font-medium border-b border-zinc-800">Role</th>
-                          <th className="px-6 py-4 font-medium border-b border-zinc-800 text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {users.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((u) => {
-                          const primaryEmail = u.emailAddresses.find(e => e.id === u.primaryEmailAddressId)?.emailAddress || 'No Email';
-                          // Support both legacy 'role' string and new 'roles' array during migration
-                          const legacyRole = u.publicMetadata?.role;
-                          const rolesArray = Array.isArray(u.publicMetadata?.roles) ? u.publicMetadata.roles : (legacyRole ? [legacyRole] : ['user']);
-                          const isAdmin = rolesArray.includes('admin') || legacyRole === 'admin';
-                          
-                          return (
-                            <tr key={u.id} className="border-b border-zinc-800/50 hover:bg-white/5 transition-colors">
-                              <td className="px-6 py-4 flex items-center gap-3">
-                                 <img src={u.imageUrl} alt="Avatar" className="w-8 h-8 rounded-full border border-zinc-700" />
-                                 <div>
-                                   <div className="font-medium text-white flex items-center gap-2">
-                                     {u.firstName} {u.lastName}
-                                     <span className="text-[10px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded border border-zinc-700">@{u.username}</span>
+                  <div className="glass-panel border border-glass-border rounded-2xl shadow-xl overflow-visible flex flex-col">
+                    <div className="overflow-x-auto">
+                      <table className="w-full min-w-[560px] text-left text-sm text-zinc-400">
+                        <thead>
+                          <tr className="bg-zinc-900/50 text-zinc-300">
+                            <th className="px-6 py-4 font-medium border-b border-zinc-800">User / Email</th>
+                            <th className="px-6 py-4 font-medium border-b border-zinc-800">Role</th>
+                            <th className="px-6 py-4 font-medium border-b border-zinc-800 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {users.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((u) => {
+                            const primaryEmail = u.emailAddresses.find(e => e.id === u.primaryEmailAddressId)?.emailAddress || 'No Email';
+                            const legacyRole = u.publicMetadata?.role;
+                            const rolesArray = Array.isArray(u.publicMetadata?.roles) ? u.publicMetadata.roles : (legacyRole ? [legacyRole] : ['user']);
+                            const isAdmin = rolesArray.includes('admin') || legacyRole === 'admin';
+                            
+                            return (
+                              <tr key={u.id} className="border-b border-zinc-800/50 hover:bg-white/5 transition-colors">
+                                <td className="px-6 py-4 flex items-center gap-3">
+                                   <img src={u.imageUrl} alt="Avatar" className="w-8 h-8 rounded-full border border-zinc-700" />
+                                   <div>
+                                     <div className="font-medium text-white flex items-center gap-2">
+                                       {u.firstName} {u.lastName}
+                                       <span className="text-[10px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded border border-zinc-700">@{u.username}</span>
+                                     </div>
+                                     <div className="text-xs text-zinc-500">{primaryEmail}</div>
                                    </div>
-                                   <div className="text-xs text-zinc-500">{primaryEmail}</div>
-                                 </div>
-                              </td>
-                              <td className="px-6 py-4">
-                                 <CustomRoleSelect 
-                                    user={u} 
-                                    currentRoles={rolesArray} 
-                                    isAdmin={isAdmin} 
-                                    onRoleChange={handleRoleChange} 
-                                 />
-                              </td>
-                              <td className="px-6 py-4 flex justify-end">
-                                 <button 
-                                    onClick={() => handleDeleteUser(u.id)}
-                                    className="p-2 text-zinc-500 hover:text-red-400 transition-colors"
-                                    title="Revoke Access"
-                                    disabled={isAdmin} // Don't allow deleting admins from this UI easily
-                                 >
-                                    <X size={18} className={isAdmin ? 'opacity-30' : ''} />
-                                 </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                                </td>
+                                <td className="px-6 py-4">
+                                   <CustomRoleSelect 
+                                      user={u} 
+                                      currentRoles={rolesArray} 
+                                      isAdmin={isAdmin} 
+                                      onRoleChange={handleRoleChange} 
+                                   />
+                                </td>
+                                <td className="px-6 py-4 flex justify-end">
+                                   <button 
+                                      onClick={() => handleDeleteUser(u.id)}
+                                      className="p-2 text-zinc-500 hover:text-red-400 transition-colors"
+                                      title="Revoke Access"
+                                      disabled={isAdmin}
+                                   >
+                                      <X size={18} className={isAdmin ? 'opacity-30' : ''} />
+                                   </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
 
                     {/* Pagination Controls */}
                     {users.length > pageSize && (
