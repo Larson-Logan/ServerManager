@@ -59,6 +59,7 @@ const management = new ManagementClient({
   domain: AUTH0_DOMAIN,
   clientId: AUTH0_CLIENT_ID,
   clientSecret: AUTH0_CLIENT_SECRET,
+  audience: `https://${AUTH0_DOMAIN}/api/v2/`, // Explicitly target Management API
 });
 
 // ── JWKS / JWT ───────────────────────────────────────────────────────────────
@@ -287,7 +288,7 @@ app.post('/api/admin/roles/seed', requireAuth, requireAdmin, async (req, res) =>
     
     const results = [];
     for (const role of defaults) {
-      if (!existingNames.includes(role.name)) {
+      if (!existingNames.includes(role.name.toLowerCase())) {
         await management.roles.create(role);
         logAuditAction(req.user.email, 'SEED_ROLE', role.name);
         results.push(`Created ${role.name}`);
@@ -297,7 +298,15 @@ app.post('/api/admin/roles/seed', requireAuth, requireAdmin, async (req, res) =>
     }
     res.json({ message: 'Seed complete', results });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[RoleSeed] Error details:', {
+      message: err.message,
+      statusCode: err.statusCode,
+      body: err.body || 'No body provided'
+    });
+    res.status(err.statusCode || 500).json({ 
+      error: err.message, 
+      details: err.body || null 
+    });
   }
 });
 
