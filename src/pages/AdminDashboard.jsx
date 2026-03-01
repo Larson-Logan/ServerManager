@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { Layout } from '../components/Layout'
 import { SystemMetrics } from '../components/SystemMetrics'
-import { Check, X, Clock, Mail, Activity, Users, Monitor as MonitorIcon, ChevronLeft, ChevronRight, Shield, Globe, History, Plus, AlertCircle } from 'lucide-react'
+import { Check, X, Clock, Mail, Activity, Users, Monitor as MonitorIcon, ChevronLeft, ChevronRight, Shield, Globe, History, Plus, AlertCircle, RefreshCw } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useAuth0 } from '@auth0/auth0-react'
 
