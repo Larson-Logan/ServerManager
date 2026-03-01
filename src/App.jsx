@@ -9,6 +9,12 @@ import { Dashboard } from './pages/Dashboard'
 import { Waitlist } from './pages/Waitlist'
 import { Profile } from './pages/Profile'
 
+// Admin Subpages
+import { AdminMetrics } from './pages/admin/AdminMetrics'
+import { AdminUsers } from './pages/admin/AdminUsers'
+import { AdminRoles } from './pages/admin/AdminRoles'
+import { AdminAuditLog } from './pages/admin/AdminAuditLog'
+
 // Error Handler Component
 function AuthErrorHandler({ children }) {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -183,7 +189,12 @@ function App() {
               <AdminDashboard />
             </RoleRoute>
           } 
-        />
+        >
+          <Route index element={<AdminMetrics />} />
+          <Route path="users" element={<AdminUsers />} />
+          <Route path="roles" element={<AdminRoles />} />
+          <Route path="audit" element={<AdminAuditLog />} />
+        </Route>
 
         {/* Generic Dashboard - Just requires basic authentication */}
         <Route 
