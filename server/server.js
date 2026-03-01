@@ -333,7 +333,12 @@ app.post('/api/amp-launch', requireAuth, (req, res) => {
 // ── OIDC Authorize ────────────────────────────────────────────────────────────
 app.get('/api/oidc/authorize', (req, res) => {
   try {
-    if (!req.cookies.amp_launch) {
+    const forwardedFor = req.headers['x-forwarded-for'] || req.ip || '';
+    const isInternal = forwardedFor.includes('127.0.0.1') || 
+                       forwardedFor.includes('192.168.86.249') || 
+                       !req.headers['x-forwarded-for'];
+
+    if (!req.cookies.amp_launch && !isInternal) {
       return res.status(403).send(`
         <div style="font-family:sans-serif;text-align:center;margin-top:100px;color:#fff;background:#09090b;height:100vh;padding:20px;">
           <h2 style="color:#ef4444;">Access Denied</h2>
