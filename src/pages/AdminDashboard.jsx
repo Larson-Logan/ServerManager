@@ -20,10 +20,26 @@ export function AdminDashboard() {
   useEffect(() => { document.title = 'Admin Panel | LarsonServer'; }, []);
 
   const [accessToken, setAccessToken] = useState(null);
+  
+  const refreshLocalToken = useCallback(async () => {
+    try {
+      const token = await getToken({ 
+        authorizationParams: { 
+          audience: import.meta.env.VITE_AUTH0_AUDIENCE 
+        },
+        cacheMode: 'off' 
+      });
+      setAccessToken(token);
+      return token;
+    } catch (err) {
+      console.error('[TokenRefresh] Failed:', err);
+      return null;
+    }
+  }, [getToken]);
 
   useEffect(() => {
-    getToken().then(setAccessToken).catch(console.error);
-  }, [getToken]);
+    refreshLocalToken();
+  }, [refreshLocalToken]);
   
   const navItems = [
     { id: 'metrics', label: 'Metrics', icon: Activity },
@@ -197,9 +213,24 @@ export function AdminDashboard() {
       const headers = { Authorization: `Bearer ${token}` };
 
       const [reqRes, usersRes] = await Promise.all([
-        fetch('/api/waitlist', { headers }),
-        fetch('/api/admin/users', { headers })
+        fetch('/api/requests', { headers }),
+        fetch('/api/users', { headers })
       ]);
+
+      if (reqRes.status === 401 || usersRes.status === 401) {
+        console.warn('Unauthorized. Attempting token refresh...');
+        const newToken = await refreshLocalToken();
+        if (newToken) {
+          const newHeaders = { Authorization: `Bearer ${newToken}` };
+          const [reqRetry, usersRetry] = await Promise.all([
+            fetch('/api/requests', { headers: newHeaders }),
+            fetch('/api/users', { headers: newHeaders })
+          ]);
+          if (reqRetry.ok) setRequests(await reqRetry.json());
+          if (usersRetry.ok) setUsers(await usersRetry.json());
+          return;
+        }
+      }
 
       if (reqRes.ok) setRequests(await reqRes.json());
       if (usersRes.ok) setUsers(await usersRes.json());
@@ -211,7 +242,7 @@ export function AdminDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [getToken]);
+  }, [getToken, refreshLocalToken]);
 
   useEffect(() => {
     if (activeTab === 'users') fetchData();

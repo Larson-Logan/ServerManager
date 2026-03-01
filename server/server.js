@@ -103,6 +103,7 @@ async function getLiveRoles(userId) {
 const requireAuth = (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    console.warn('[Auth] Missing or invalid Authorization header from', req.ip);
     return res.status(401).json({ error: 'Missing or invalid Authorization header' });
   }
   const token = authHeader.split(' ')[1];
@@ -112,7 +113,10 @@ const requireAuth = (req, res, next) => {
     audience: process.env.AUTH0_AUDIENCE,
   }, (err, decoded) => {
     if (err) {
-      console.error('[Auth] JWT verification failed:', err.message);
+      console.error(`[Auth] JWT verification failed for ${req.ip}:`, err.message);
+      if (err.name === 'TokenExpiredError') {
+        console.warn(`[Auth] Token expired at ${err.expiredAt}`);
+      }
       return res.status(401).json({ error: 'Invalid token' });
     }
     req.user = decoded;
@@ -124,6 +128,7 @@ const requireAdmin = async (req, res, next) => {
   try {
     const roles = await getLiveRoles(req.user.sub);
     if (!roles.includes('admin')) {
+      console.warn(`[Forbidden] Use ${req.user.email || req.user.sub} (Roles: ${roles.join(', ')}) attempted admin action: ${req.method} ${req.path}`);
       return res.status(403).json({ error: 'Forbidden: Admin access only' });
     }
     next();
