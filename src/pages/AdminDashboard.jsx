@@ -26,8 +26,7 @@ export function AdminDashboard() {
       const token = await getToken({ 
         authorizationParams: { 
           audience: import.meta.env.VITE_AUTH0_AUDIENCE 
-        },
-        cacheMode: 'off' 
+        }
       });
       setAccessToken(token);
       return token;
