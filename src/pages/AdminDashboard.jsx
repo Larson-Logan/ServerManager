@@ -6,8 +6,7 @@ import { Link } from 'react-router-dom'
 import { useAuth0 } from '@auth0/auth0-react'
 
 // Custom Animated Multi-Select Component
-const CustomRoleSelect = ({ user, currentRoles, isAdmin, onRoleChange }) => {
-  const [isOpen, setIsOpen] = useState(false);
+const CustomRoleSelect = ({ user, currentRoles, isAdmin, onRoleChange, isOpen, onToggle }) => {
   const dropdownRef = useRef(null);
   
   // Prevent locking yourself out
@@ -22,7 +21,7 @@ const CustomRoleSelect = ({ user, currentRoles, isAdmin, onRoleChange }) => {
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
+        onToggle(null);
       }
     };
     if (isOpen) {
@@ -31,7 +30,7 @@ const CustomRoleSelect = ({ user, currentRoles, isAdmin, onRoleChange }) => {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isOpen]);
+  }, [isOpen, onToggle]);
 
   const toggleRole = (roleId) => {
      if (isDisabled && roleId === 'admin') return; // Don't let superadmin remove their own admin role
@@ -45,9 +44,9 @@ const CustomRoleSelect = ({ user, currentRoles, isAdmin, onRoleChange }) => {
   };
 
   return (
-    <div className={`relative ${isOpen ? 'z-50' : 'z-auto'}`} ref={dropdownRef}>
+    <div className="relative" ref={dropdownRef}>
       <button 
-        onClick={() => !isDisabled && setIsOpen(!isOpen)}
+        onClick={() => !isDisabled && onToggle(isOpen ? null : user.id)}
         className={`px-3 py-1.5 rounded-lg text-xs font-semibold border flex items-center gap-2 transition-all ${isDisabled ? 'opacity-50 cursor-not-allowed border-zinc-700 bg-zinc-800/50 text-zinc-400' : 'border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-white shadow-sm'}`}
       >
         {currentRoles.length === 0 ? (
@@ -145,6 +144,7 @@ export function AdminDashboard() {
   const pageSize = 10;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [openDropdownUserId, setOpenDropdownUserId] = useState(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -393,7 +393,7 @@ export function AdminDashboard() {
                     No registered users yet.
                  </div>
                ) : (
-                  <div className="glass-panel border border-glass-border rounded-2xl shadow-xl overflow-visible flex flex-col">
+                  <div className="glass-panel border border-glass-border rounded-2xl shadow-xl overflow-visible flex flex-col min-h-[300px]">
                     <div className="overflow-x-auto">
                       <table className="w-full min-w-[560px] text-left text-sm text-zinc-400">
                         <thead>
@@ -410,8 +410,10 @@ export function AdminDashboard() {
                             const rolesArray = Array.isArray(u.publicMetadata?.roles) ? u.publicMetadata.roles : (legacyRole ? [legacyRole] : ['user']);
                             const isAdmin = rolesArray.includes('admin') || legacyRole === 'admin';
                             
+                            const isOpen = openDropdownUserId === u.id;
+                          
                             return (
-                              <tr key={u.id} className="border-b border-zinc-800/50 hover:bg-white/5 transition-colors">
+                              <tr key={u.id} className={`border-b border-zinc-800/50 hover:bg-white/5 transition-colors relative ${isOpen ? 'z-50' : 'z-0'}`}>
                                 <td className="px-6 py-4 flex items-center gap-3">
                                    <img src={u.imageUrl} alt="Avatar" className="w-8 h-8 rounded-full border border-zinc-700" />
                                    <div>
@@ -428,6 +430,8 @@ export function AdminDashboard() {
                                       currentRoles={rolesArray} 
                                       isAdmin={isAdmin} 
                                       onRoleChange={handleRoleChange} 
+                                      isOpen={isOpen}
+                                      onToggle={setOpenDropdownUserId}
                                    />
                                 </td>
                                 <td className="px-6 py-4 flex justify-end">
