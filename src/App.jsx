@@ -1,25 +1,34 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useSearchParams } from 'react-router-dom'
 import { useAuth0 } from '@auth0/auth0-react'
 
 // Page Components
-import { PublicView } from './pages/PublicView'
-import { AdminDashboard } from './pages/AdminDashboard'
-import { Dashboard } from './pages/Dashboard'
-import { Waitlist } from './pages/Waitlist'
-import { Profile } from './pages/Profile'
+const PublicView = lazy(() => import('./pages/PublicView').then(m => ({ default: m.PublicView })));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
+const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
+const Waitlist = lazy(() => import('./pages/Waitlist').then(m => ({ default: m.Waitlist })));
+const Profile = lazy(() => import('./pages/Profile').then(m => ({ default: m.Profile })));
 
-// Admin Subpages
-import { AdminMetrics } from './pages/admin/AdminMetrics'
-import { AdminUsers } from './pages/admin/AdminUsers'
-import { AdminRoles } from './pages/admin/AdminRoles'
-import { AdminAuditLog } from './pages/admin/AdminAuditLog'
+// Admin Subpages (lazy loaded for bundle optimization)
+const AdminMetrics = lazy(() => import('./pages/admin/AdminMetrics').then(m => ({ default: m.AdminMetrics })));
+const AdminUsers = lazy(() => import('./pages/admin/AdminUsers').then(m => ({ default: m.AdminUsers })));
+const AdminRoles = lazy(() => import('./pages/admin/AdminRoles').then(m => ({ default: m.AdminRoles })));
+const AdminAuditLog = lazy(() => import('./pages/admin/AdminAuditLog').then(m => ({ default: m.AdminAuditLog })));
+
+// Loading Fallback Component
+const LoadingScreen = () => (
+  <div className="fixed inset-0 z-[200] flex items-center justify-center bg-[#09090b]">
+    <div className="flex flex-col items-center gap-4">
+      <div className="w-12 h-12 border-2 border-electric-blue/20 border-t-electric-blue rounded-full animate-spin"></div>
+      <p className="text-zinc-500 font-medium text-sm animate-pulse">Initializing System...</p>
+    </div>
+  </div>
+);
 
 // Error Handler Component
 function AuthErrorHandler({ children }) {
   const [searchParams, setSearchParams] = useSearchParams();
   
-  // Read initial error directly from params (no effect needed)
   const initialError = searchParams.get('error');
   const initialErrorDesc = searchParams.get('error_description');
   
@@ -30,7 +39,6 @@ function AuthErrorHandler({ children }) {
     return '';
   });
 
-  // Clean URL strictly once if there was an error
   useEffect(() => {
     if (initialError === 'access_denied') {
       searchParams.delete('error');
@@ -38,8 +46,7 @@ function AuthErrorHandler({ children }) {
       searchParams.delete('state');
       setSearchParams(searchParams, { replace: true });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [initialError, searchParams, setSearchParams]);
 
   return (
     <>
@@ -67,10 +74,9 @@ function AuthErrorHandler({ children }) {
   );
 }
 
-// Hook to fetch LIVE roles from our backend (bypasses stale JWT cache)
 function useLiveRoles() {
   const { isAuthenticated, isLoading, getAccessTokenSilently } = useAuth0();
-  const [roles, setRoles] = useState(null); // null = still loading
+  const [roles, setRoles] = useState(null); 
   const [rolesError, setRolesError] = useState(false);
 
   const fetchRoles = useCallback(async () => {
@@ -82,12 +88,11 @@ function useLiveRoles() {
       });
       if (!res.ok) throw new Error('Failed to fetch roles');
       const data = await res.json();
-      console.log('[useLiveRoles] Live roles from server:', data.roles);
       setRoles(data.roles);
     } catch (err) {
       console.error('[useLiveRoles] Error:', err);
       setRolesError(true);
-      setRoles([]); // fail-safe: treat as no roles (waitlisted)
+      setRoles([]); 
     }
   }, [isAuthenticated, getAccessTokenSilently]);
 
@@ -100,16 +105,15 @@ function useLiveRoles() {
   return { roles, rolesError };
 }
 
-// Custom RBAC Guard Route
 function RoleRoute({ children, allowedRole, fallbackPath }) {
   const { isAuthenticated, isLoading, loginWithRedirect } = useAuth0();
   const { roles } = useLiveRoles();
 
-  if (isLoading || roles === null) return <div>Loading...</div>;
+  if (isLoading || roles === null) return <LoadingScreen />;
 
   if (!isAuthenticated) {
     loginWithRedirect();
-    return <div>Redirecting to login...</div>;
+    return <LoadingScreen />;
   }
 
   if (roles.includes('waitlist')) return <Navigate to="/waitlist" replace />;
@@ -118,15 +122,14 @@ function RoleRoute({ children, allowedRole, fallbackPath }) {
   return children;
 }
 
-// Protected Route Wrapper
 function ProtectedRoute({ children, allowWaitlist = false }) {
   const { isAuthenticated, isLoading, loginWithRedirect } = useAuth0();
   const { roles } = useLiveRoles();
 
-  if (isLoading || roles === null) return <div>Loading...</div>;
+  if (isLoading || roles === null) return <LoadingScreen />;
   if (!isAuthenticated) {
     loginWithRedirect();
-    return <div>Redirecting to login...</div>;
+    return <LoadingScreen />;
   }
 
   const isWaitlist = roles.includes('waitlist') || roles.length === 0;
@@ -137,7 +140,6 @@ function ProtectedRoute({ children, allowWaitlist = false }) {
   return children;
 }
 
-// Simple component for /login: immediately trigger Auth0 or bounce to dashboard
 function LoginRedirect() {
   const { isAuthenticated, isLoading, loginWithRedirect } = useAuth0();
   useEffect(() => {
@@ -146,83 +148,75 @@ function LoginRedirect() {
     }
   }, [isLoading, isAuthenticated, loginWithRedirect]);
   if (isAuthenticated) return <Navigate to="/dashboard" replace />;
-  return <div>Redirecting to login...</div>;
+  return <LoadingScreen />;
 }
 
 function App() {
   const { isAuthenticated, isLoading } = useAuth0();
 
-  if (isLoading) return <div>Loading...</div>;
+  if (isLoading) return <LoadingScreen />;
 
   return (
     <BrowserRouter>
       <AuthErrorHandler>
-        <Routes>
-        {/* Public Homepage / Link Hub */}
-        <Route 
-          path="/" 
-          element={
-            isAuthenticated ? (
-              <ProtectedRoute>
-                <Navigate to="/dashboard" replace />
-              </ProtectedRoute>
-            ) : (
-              <PublicView />
-            )
-          } 
-        />
+        <Suspense fallback={<LoadingScreen />}>
+          <Routes>
+            <Route 
+              path="/" 
+              element={
+                isAuthenticated ? (
+                  <ProtectedRoute>
+                    <Navigate to="/dashboard" replace />
+                  </ProtectedRoute>
+                ) : (
+                  <PublicView />
+                )
+              } 
+            />
 
-        {/* Global Login Route - directly triggers Auth0 */}
-        <Route 
-          path="/login" 
-          element={<LoginRedirect />}
-        />
+            <Route path="/login" element={<LoginRedirect />} />
+            <Route path="/waitlist" element={<ProtectedRoute allowWaitlist={true}><Waitlist /></ProtectedRoute>} />
 
-        {/* Waitlist Page */}
-        <Route path="/waitlist" element={<ProtectedRoute allowWaitlist={true}><Waitlist /></ProtectedRoute>} />
+            <Route 
+              path="/admin" 
+              element={
+                <RoleRoute allowedRole="admin" fallbackPath="/dashboard">
+                  <AdminDashboard />
+                </RoleRoute>
+              } 
+            >
+              <Route index element={<Navigate to="metrics" replace />} />
+              <Route path="metrics" element={<AdminMetrics />} />
+              <Route path="users" element={<AdminUsers />} />
+              <Route path="roles" element={<AdminRoles />} />
+              <Route path="audit" element={<AdminAuditLog />} />
+            </Route>
 
-        {/* Protected Admin Panel (Requires 'admin' role) */}
-        <Route 
-          path="/admin" 
-          element={
-            <RoleRoute allowedRole="admin" fallbackPath="/dashboard">
-              <AdminDashboard />
-            </RoleRoute>
-          } 
-        >
-          <Route index element={<Navigate to="metrics" replace />} />
-          <Route path="metrics" element={<AdminMetrics />} />
-          <Route path="users" element={<AdminUsers />} />
-          <Route path="roles" element={<AdminRoles />} />
-          <Route path="audit" element={<AdminAuditLog />} />
-        </Route>
+            <Route 
+              path="/dashboard" 
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } 
+            />
 
-        {/* Generic Dashboard - Just requires basic authentication */}
-        <Route 
-          path="/dashboard" 
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          } 
-        />
+            <Route 
+              path="/profile" 
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              } 
+            />
 
-        {/* Profile Page */}
-        <Route 
-          path="/profile" 
-          element={
-            <ProtectedRoute>
-              <Profile />
-            </ProtectedRoute>
-          } 
-        />
-
-        {/* Catch-all 404 redirect */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
       </AuthErrorHandler>
     </BrowserRouter>
   )
 }
+
 
 export default App
