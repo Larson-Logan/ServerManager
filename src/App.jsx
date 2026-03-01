@@ -190,7 +190,8 @@ function App() {
             </RoleRoute>
           } 
         >
-          <Route index element={<AdminMetrics />} />
+          <Route index element={<Navigate to="metrics" replace />} />
+          <Route path="metrics" element={<AdminMetrics />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="roles" element={<AdminRoles />} />
           <Route path="audit" element={<AdminAuditLog />} />

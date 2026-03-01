@@ -15,6 +15,7 @@ export function AdminDashboard() {
   if (currentPath.includes('/admin/users')) activeTab = 'users';
   else if (currentPath.includes('/admin/roles')) activeTab = 'roles';
   else if (currentPath.includes('/admin/audit')) activeTab = 'audit';
+  else if (currentPath.includes('/admin/metrics')) activeTab = 'metrics';
 
   useEffect(() => { document.title = 'Admin Panel | LarsonServer'; }, []);
 
@@ -25,7 +26,7 @@ export function AdminDashboard() {
   }, [getToken]);
   
   const navItems = [
-    { id: 'metrics', label: 'System Metrics', icon: Activity },
+    { id: 'metrics', label: 'Metrics', icon: Activity },
     { id: 'users', label: 'Users', icon: Users },
     { id: 'roles', label: 'Roles', icon: Shield },
     { id: 'audit', label: 'Audit Log', icon: History },
@@ -52,7 +53,7 @@ export function AdminDashboard() {
       return;
     }
     // Logic for subpage navigation
-    const path = id === 'metrics' ? '/admin' : `/admin/${id}`;
+    const path = `/admin/${id}`;
     navigate(path);
   };
 
